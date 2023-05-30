@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper SYSTEM "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.atguigu.gmall.product.mapper.BaseAttrInfoMapper">
+
+
+<!--
+    定义返回结果集映射
+    id: 表示唯一
+    type: 返回结果映射类型
+    autoMapping: 自动映射
+-->
+    <resultMap id="BaseAttrInfoMap" type="com.atguigu.gmall.model.product.BaseAttrInfo" autoMapping="true">
+<!--
+    id: 表示主键 column: 当执行完SQL之后,定义的字段名
+    result: 表示普通字段
+    property: 表示实体类的属性名
+    column: 表示执行SQL语句之后的字段名
+-->
+        <id property="id" column="id"/>
+
+<!--
+    1：n实现
+    ofType: 表示多的数据类型
+-->
+        <collection property="attrValueList" ofType="com.atguigu.gmall.model.product.BaseAttrValue" autoMapping="true">
+<!-- 如果有字段冲突,需要起别名 -->
+            <id property="id" column="value_id"/>
+        </collection>
+    </resultMap>
+
+<!--
+    id: 表示方法名
+    resultMap: 返回结果集映射
+    resultType: 表示返回结果集具体类型
+-->
+    <select id="selectAttrInfoList" resultMap="BaseAttrInfoMap">
+        select
+            bai.id,
+            bai.attr_name,
+            bai.category_id,
+            bai.category_level,
+            bav.id value_id,
+            bav.value_name,
+            bav.attr_id
+        from base_attr_info bai
+        inner join base_attr_value bav
+        on bai.id = bav.attr_id
+        <where>
+            <if test="category1Id!=null and category1Id!=0">
+                or (bai.category_id = #{category1Id} and bai.category_level = 1)
+            </if>
+            <if test="category2Id!=null and category2Id!=0">
+                or (bai.category_id = #{category2Id} and bai.category_level = 2)
+            </if>
+            <if test="category3Id!=null and category3Id!=0">
+                or (bai.category_id = #{category3Id} and bai.category_level = 3)
+            </if>
+        </where>
+        and bai.is_deleted = 0
+        and bav.is_deleted = 0
+        order by bai.category_level, bai.id
+    </select>
+
+</mapper>

@@ -11,6 +11,9 @@
 
     <artifactId>service</artifactId>
     <packaging>pom</packaging>
+    <modules>
+        <module>service-product</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
