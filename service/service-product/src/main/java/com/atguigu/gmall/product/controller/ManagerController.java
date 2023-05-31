@@ -7,10 +7,7 @@ import com.atguigu.gmall.model.product.BaseCategory2;
 import com.atguigu.gmall.model.product.BaseCategory3;
 import com.atguigu.gmall.product.service.ManagerService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -60,5 +57,12 @@ public class ManagerController {
         return Result.ok(baseAttrInfoList);
     }
 
+    //添加平台属性 Json-->POJO
+    @PostMapping("saveAttrInfo")
+    public Result saveAttrInfo(@RequestBody BaseAttrInfo baseAttrInfo){
 
+        this.managerService.saveAttrInfo(baseAttrInfo);
+        return Result.ok();
+
+    }
 }

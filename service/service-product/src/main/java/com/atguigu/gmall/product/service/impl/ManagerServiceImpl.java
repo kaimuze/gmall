@@ -8,6 +8,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
@@ -30,10 +32,10 @@ public class ManagerServiceImpl implements ManagerService {
     private BaseCategory3Mapper baseCategory3Mapper;
 
     @Autowired
-    private BaseAttrInfoMapper baseAttributeInfoMapper;
+    private BaseAttrInfoMapper baseAttrInfoMapper;
 
     @Autowired
-    private BaseAttrValueMapper baseAttributeValueMapper;
+    private BaseAttrValueMapper baseAttrValueMapper;
 
     @Override
     public List<BaseCategory1> getCategory1() {
@@ -77,6 +79,28 @@ public class ManagerServiceImpl implements ManagerService {
             and bai.category_level = 3)
         order by bai.category_level, bai.id;
 */
-        return baseAttributeInfoMapper.selectAttrInfoList(category1Id,category2Id,category3Id);
+        return baseAttrInfoMapper.selectAttrInfoList(category1Id,category2Id,category3Id);
+    }
+
+    /**
+     * 保存平台属性信息数据
+     * 注意: 平台属性和平台属性值是一对一关系,保存平台属性信息的同时也要保存平台属性值的对应属性信息
+     * 操作两张表,需要事务保证原子性
+     * 注意: 必须是要rollbackFor,且异常类型时exception类型,因为不加的话,默认是运行时异常runtimeException
+     * @param baseAttrInfo
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveAttrInfo(BaseAttrInfo baseAttrInfo) {
+        // base_attr_info  base_attr_value
+        baseAttrInfoMapper.insert(baseAttrInfo);
+        List<BaseAttrValue> attrValueList = baseAttrInfo.getAttrValueList();
+        if (!CollectionUtils.isEmpty(attrValueList)){
+            attrValueList.forEach(baseAttrValue -> {
+                // 注意: base_attr_value.id = base_attr_info.id 先执行base_attr_info表的insert语句,base_attr_info.id通过主键回填获取
+                baseAttrValue.setAttrId(baseAttrInfo.getId());
+                baseAttrValueMapper.insert(baseAttrValue);
+            });
+        }
     }
 }

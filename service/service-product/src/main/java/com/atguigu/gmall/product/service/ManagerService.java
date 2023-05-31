@@ -41,4 +41,10 @@ public interface ManagerService {
      * @return
      */
     List<BaseAttrInfo> getAttrInfoListByCategoryId(Long category1Id, Long category2Id, Long category3Id);
+
+    /**
+     * 保存平台属性数据
+     * @param baseAttrInfo
+     */
+    void saveAttrInfo(BaseAttrInfo baseAttrInfo);
 }
