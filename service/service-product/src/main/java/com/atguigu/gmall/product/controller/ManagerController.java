@@ -1,10 +1,7 @@
 package com.atguigu.gmall.product.controller;
 
 import com.atguigu.gmall.common.result.Result;
-import com.atguigu.gmall.model.product.BaseAttrInfo;
-import com.atguigu.gmall.model.product.BaseCategory1;
-import com.atguigu.gmall.model.product.BaseCategory2;
-import com.atguigu.gmall.model.product.BaseCategory3;
+import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.service.ManagerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -63,6 +60,16 @@ public class ManagerController {
 
         this.managerService.saveAttrInfo(baseAttrInfo);
         return Result.ok();
+    }
 
+    /**
+     * 平台属性修改操作: 第一步回显操作
+     * @param attrId
+     * @return
+     */
+    @GetMapping("getAttrValueList/{attrId}")
+    public Result getAttrValueList(@PathVariable Long attrId){
+        List<BaseAttrValue> attrValueList = this.managerService.getAttrValueList(attrId);
+        return Result.ok(attrValueList);
     }
 }

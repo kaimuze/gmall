@@ -92,8 +92,30 @@ public class ManagerServiceImpl implements ManagerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveAttrInfo(BaseAttrInfo baseAttrInfo) {
-        // base_attr_info  base_attr_value
-        baseAttrInfoMapper.insert(baseAttrInfo);
+
+        //既有保存又有修改实现  有id是修改 没id是保存插入
+        //1.先回显getAttrValueList  2.再修改保存
+        // 问题分析: 在用户修改的时候,我们不能确定用户是要对这组数据进行的具体增删改操作怎么办,所以在此修改不能使用update语句. 直接先删除再新增!
+        // 2.通过id表示区分是修改还是保存
+        if (baseAttrInfo.getId() == null){
+            //平台属性id值为空就是保存添加
+            //保存数据
+            // base_attr_info  base_attr_value 操作这两张表
+            //针对base_attr_info表的保存操作
+            baseAttrInfoMapper.insert(baseAttrInfo);
+        }else{
+            //平台属性id值不为空则是修改
+            // 对于base_attr_info表的修改操作
+            baseAttrInfoMapper.updateById(baseAttrInfo);
+
+            //针对base_attr_value表的操作
+            // 1. 先删除表中数据,再添加新增数据
+            LambdaQueryWrapper<BaseAttrValue> baseAttrValueLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            baseAttrValueLambdaQueryWrapper.eq(BaseAttrValue::getAttrId,baseAttrInfo.getId());
+            baseAttrValueMapper.delete(baseAttrValueLambdaQueryWrapper);
+        }
+
+        //2/ 再添加,新增数据
         List<BaseAttrValue> attrValueList = baseAttrInfo.getAttrValueList();
         if (!CollectionUtils.isEmpty(attrValueList)){
             attrValueList.forEach(baseAttrValue -> {
@@ -102,5 +124,17 @@ public class ManagerServiceImpl implements ManagerService {
                 baseAttrValueMapper.insert(baseAttrValue);
             });
         }
+    }
+
+    /**
+     * 根据平台属性id查询平台属性值数据集合:回显
+     * @param attrId
+     * @return
+     */
+    @Override
+    public List<BaseAttrValue> getAttrValueList(Long attrId) {
+        LambdaQueryWrapper<BaseAttrValue> baseAttrValueLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        baseAttrValueLambdaQueryWrapper.eq(BaseAttrValue::getAttrId,attrId);
+        return this.baseAttrValueMapper.selectList(baseAttrValueLambdaQueryWrapper);
     }
 }
