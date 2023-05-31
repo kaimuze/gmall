@@ -137,4 +137,18 @@ public class ManagerServiceImpl implements ManagerService {
         baseAttrValueLambdaQueryWrapper.eq(BaseAttrValue::getAttrId,attrId);
         return this.baseAttrValueMapper.selectList(baseAttrValueLambdaQueryWrapper);
     }
+
+    @Override
+    public BaseAttrInfo getBaseAttrInfo(Long attrId) {
+        LambdaQueryWrapper<BaseAttrInfo> baseAttrInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        baseAttrInfoLambdaQueryWrapper.eq(BaseAttrInfo::getId,attrId);
+//        return this.baseAttrInfoMapper.selectOne(baseAttrInfoLambdaQueryWrapper);
+        //注意这里为什么不能直接返回查询到的对象??
+        //注意前端控制器中返回的数据是baseAttrValueList数据,我们这里仅仅是查询到了base_attr_info表中的数据,并没有封装BaseAttrValue数据
+        BaseAttrInfo baseAttrInfo = baseAttrInfoMapper.selectById(attrId);
+        if (baseAttrInfo != null) {
+            baseAttrInfo.setAttrValueList(getAttrValueList(attrId));
+        }
+        return baseAttrInfo;
+    }
 }

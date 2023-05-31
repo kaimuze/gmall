@@ -69,7 +69,12 @@ public class ManagerController {
      */
     @GetMapping("getAttrValueList/{attrId}")
     public Result getAttrValueList(@PathVariable Long attrId){
-        List<BaseAttrValue> attrValueList = this.managerService.getAttrValueList(attrId);
+
+        //先根据这个平台属性id获取到平台属性对象
+        BaseAttrInfo baseAttrInfo = this.managerService.getBaseAttrInfo(attrId);
+        //List<BaseAttrValue> attrValueList = this.managerService.getAttrValueList(attrId);
+        //有属性的情况下,再获取相对应的平台属性值,这样做算是细化了查询平台属性时,属性值在那一瞬间出现更改导致后续的查找不存在的情况
+        List<BaseAttrValue> attrValueList = baseAttrInfo.getAttrValueList();
         return Result.ok(attrValueList);
     }
 }

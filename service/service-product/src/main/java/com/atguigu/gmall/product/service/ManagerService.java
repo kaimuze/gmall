@@ -51,4 +51,11 @@ public interface ManagerService {
      * @return
      */
     List<BaseAttrValue> getAttrValueList(Long attrId);
+
+    /**
+     * 根据平台属性id获取平台属性对象
+     * @param attrId
+     * @return
+     */
+    BaseAttrInfo getBaseAttrInfo(Long attrId);
 }
