@@ -1,16 +1,16 @@
 package com.atguigu.gmall.product.controller;
 
 import com.atguigu.gmall.common.result.Result;
+import com.atguigu.gmall.model.product.BaseSaleAttr;
+import com.atguigu.gmall.model.product.SpuImage;
 import com.atguigu.gmall.model.product.SpuInfo;
+import com.atguigu.gmall.model.product.SpuPoster;
 import com.atguigu.gmall.product.service.ManagerService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -42,6 +42,23 @@ public class SpuManagerController {
         IPage<SpuInfo> iPage = this.managerService.getSpuInfoList(pageModel,spuInfo);
         return Result.ok(iPage);
 
+    }
+
+    // http://localhost/admin/product/baseSaleAttrList 获取spu所有的销售属性
+    @GetMapping("baseSaleAttrList")
+    public Result getSaleAttrList(){
+
+        List<BaseSaleAttr> baseSaleAttrList = this.managerService.getSaleAttrList();
+        return Result.ok(baseSaleAttrList);
+    }
+
+    // http://localhost/admin/product/saveSpuInfo
+    // {id: null, spuName: null, description: null, category3Id: 61, spuImageList: [], spuSaleAttrList: [],…}
+    @PostMapping("saveSpuInfo")
+    public Result saveSpuInfo(@RequestBody SpuInfo spuInfo){
+        this.managerService.saveSpuInfo(spuInfo);
+
+        return Result.ok();
     }
 
 

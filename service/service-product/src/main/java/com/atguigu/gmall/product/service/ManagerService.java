@@ -75,4 +75,16 @@ public interface ManagerService {
      * @return
      */
     IPage<BaseTrademark> getTrademarkList(Page<BaseTrademark> pageModel);
+
+    /**
+     * 获取所有销售属性数据
+     * @return
+     */
+    List<BaseSaleAttr> getSaleAttrList();
+
+    /**
+     * 保存spu信息数据
+     * @param spuInfo
+     */
+    void saveSpuInfo(SpuInfo spuInfo);
 }
