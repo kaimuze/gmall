@@ -5,7 +5,8 @@ import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManagerService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,12 @@ public class ManagerServiceImpl implements ManagerService {
 
     @Autowired
     private BaseAttrValueMapper baseAttrValueMapper;
+
+    @Autowired
+    private SpuInfoMapper spuInfoMapper;
+
+    @Autowired
+    private BaseTrademarkMapper baseTrademarkMapper;
 
     @Override
     public List<BaseCategory1> getCategory1() {
@@ -150,5 +157,25 @@ public class ManagerServiceImpl implements ManagerService {
             baseAttrInfo.setAttrValueList(getAttrValueList(attrId));
         }
         return baseAttrInfo;
+    }
+
+    @Override
+    public IPage<SpuInfo> getSpuInfoList(Page<SpuInfo> pageModel, SpuInfo spuInfo) {
+        QueryWrapper<SpuInfo> spuInfoQueryWrapper = new QueryWrapper<>();
+        spuInfoQueryWrapper.eq("category3_id",spuInfo.getCategory3Id());
+        spuInfoQueryWrapper.orderByDesc("id");
+        return spuInfoMapper.selectPage(pageModel, spuInfoQueryWrapper);
+    }
+
+    /**
+     * 查询品牌列表信息数据
+     * @param pageModel
+     * @return
+     */
+    @Override
+    public IPage<BaseTrademark> getTrademarkList(Page<BaseTrademark> pageModel) {
+        QueryWrapper<BaseTrademark> baseTrademarkQueryWrapper = new QueryWrapper<>();
+        baseTrademarkQueryWrapper.orderByDesc("id");
+        return baseTrademarkMapper.selectPage(pageModel,baseTrademarkQueryWrapper);
     }
 }
