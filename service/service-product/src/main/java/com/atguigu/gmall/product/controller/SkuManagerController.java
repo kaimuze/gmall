@@ -3,11 +3,10 @@ package com.atguigu.gmall.product.controller;
 import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.model.product.SkuInfo;
 import com.atguigu.gmall.product.service.SkuManagerService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * @ClassName: SkuManagerController
@@ -28,5 +27,14 @@ public class SkuManagerController {
         return Result.ok();
     }
 
+    // 商品属性的sku管理 http://localhost/admin/product/list/1/10?category3Id=61
+    @GetMapping("list/{page}/{limit}")
+    public Result listSku(@PathVariable Long page,
+                          @PathVariable Long limit,
+                          @RequestParam Long category3Id){
+        Page<SkuInfo> pageModel = new Page<>(page,limit);
+        IPage<SkuInfo> iPage = this.skuManagerService.getListSku(pageModel,category3Id);
+        return Result.ok(iPage);
+    }
 
 }

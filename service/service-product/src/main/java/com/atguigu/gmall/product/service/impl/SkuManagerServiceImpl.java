@@ -9,6 +9,9 @@ import com.atguigu.gmall.product.mapper.SkuImageMapper;
 import com.atguigu.gmall.product.mapper.SkuInfoMapper;
 import com.atguigu.gmall.product.mapper.SkuSaleAttrValueMapper;
 import com.atguigu.gmall.product.service.SkuManagerService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -68,5 +71,13 @@ public class SkuManagerServiceImpl implements SkuManagerService {
                 this.skuAttrValueMapper.insert(skuAttrValue);
             });
         }
+    }
+
+    @Override
+    public IPage<SkuInfo> getListSku(Page<SkuInfo> pageModel, Long category3Id) {
+        LambdaQueryWrapper<SkuInfo> skuInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        skuInfoLambdaQueryWrapper.eq(SkuInfo::getCategory3Id,category3Id);
+        skuInfoLambdaQueryWrapper.orderByDesc(SkuInfo::getId);
+        return this.skuInfoMapper.selectPage(pageModel,skuInfoLambdaQueryWrapper);
     }
 }

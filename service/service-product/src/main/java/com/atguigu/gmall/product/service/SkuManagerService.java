@@ -1,6 +1,8 @@
 package com.atguigu.gmall.product.service;
 
 import com.atguigu.gmall.model.product.SkuInfo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 /**
  * @author 恺牧泽
@@ -13,4 +15,12 @@ public interface SkuManagerService {
      * @param skuInfo
      */
     void saveSkuInfo(SkuInfo skuInfo);
+
+    /**
+     * 根据三级分类id分页查询sku信息数据
+     * @param pageModel
+     * @param category3Id
+     * @return
+     */
+    IPage<SkuInfo> getListSku(Page<SkuInfo> pageModel, Long category3Id);
 }
