@@ -5,14 +5,19 @@ import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManagerService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sun.scenario.effect.impl.prism.ps.PPSBlend_ADDPeer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @ClassName: ManagerServiceImpl
@@ -58,6 +63,18 @@ public class ManagerServiceImpl implements ManagerService {
 
     @Autowired
     private SpuSaleAttrValueMapper spuSaleAttrValueMapper;
+
+    @Autowired
+    private SkuInfoMapper skuInfoMapper;
+
+    @Autowired
+    private SkuImageMapper skuImageMapper;
+
+    @Autowired
+    private BaseCategoryViewMapper baseCategoryViewMapper;
+
+    @Autowired
+    private SkuSaleAttrValueMapper skuSaleAttrValueMapper;
 
     @Override
     public List<BaseCategory1> getCategory1() {
@@ -211,7 +228,7 @@ public class ManagerServiceImpl implements ManagerService {
             });
         }
         // 3. spu_poster
-        if (!CollectionUtils.isEmpty(spuInfo.getSpuPosterList())){
+        if (!CollectionUtils.isEmpty(spuInfo.getSpuPosterList())) {
             spuInfo.getSpuPosterList().forEach(spuPoster -> {
                 spuPoster.setSpuId(spuInfo.getId());
                 this.spuPosterMapper.insert(spuPoster);
@@ -219,13 +236,13 @@ public class ManagerServiceImpl implements ManagerService {
         }
         // 4. spu_sale_attr
         List<SpuSaleAttr> spuSaleAttrList = spuInfo.getSpuSaleAttrList();
-        if (!CollectionUtils.isEmpty(spuSaleAttrList)){
+        if (!CollectionUtils.isEmpty(spuSaleAttrList)) {
             spuSaleAttrList.forEach(spuSaleAttr -> {
                 spuSaleAttr.setSpuId(spuInfo.getId());
                 this.spuSaleAttrMapper.insert(spuSaleAttr);
                 // 当前对象中操作:
                 List<SpuSaleAttrValue> spuSaleAttrValueList = spuSaleAttr.getSpuSaleAttrValueList();
-                if (!CollectionUtils.isEmpty(spuSaleAttrValueList)){
+                if (!CollectionUtils.isEmpty(spuSaleAttrValueList)) {
                     spuSaleAttrValueList.forEach(spuSaleAttrValue -> {
                         spuSaleAttrValue.setSpuId(spuInfo.getId());
                         spuSaleAttrValue.setSaleAttrName(spuSaleAttr.getSaleAttrName());
@@ -239,7 +256,7 @@ public class ManagerServiceImpl implements ManagerService {
     @Override
     public List<SpuImage> getSpuImageList(Long spuId) {
         LambdaQueryWrapper<SpuImage> spuImageLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        spuImageLambdaQueryWrapper.eq(SpuImage::getSpuId,spuId);
+        spuImageLambdaQueryWrapper.eq(SpuImage::getSpuId, spuId);
         return this.spuImageMapper.selectList(spuImageLambdaQueryWrapper);
     }
 
@@ -251,5 +268,70 @@ public class ManagerServiceImpl implements ManagerService {
     @Override
     public List<SpuSaleAttr> getSpuSaleAttrList(Long spuId) {
         return this.spuSaleAttrMapper.getSpuSaleAttrList(spuId);
+    }
+
+    @Override
+    public SkuInfo getSkuInfo(Long skuId) {
+        // select * from sku_info where sku_id = skuId;
+        SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
+
+        // select * from sku_image where sku_id = skuId;
+        LambdaQueryWrapper<SkuImage> skuImageLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        skuImageLambdaQueryWrapper.eq(SkuImage::getSkuId, skuId);
+        List<SkuImage> skuImageList = this.skuImageMapper.selectList(skuImageLambdaQueryWrapper);
+        skuInfo.setSkuImageList(skuImageList);
+        return skuInfo;
+    }
+
+    @Override
+    public BaseCategoryView getCategoryView(Long category3Id) {
+        return this.baseCategoryViewMapper.selectById(category3Id);
+    }
+
+    @Override
+    public BigDecimal getSkuPrice(Long skuId) {
+//        SkuInfo skuInfo = this.skuInfoMapper.selectById(skuId);
+//        BigDecimal price = skuInfo.getPrice();
+        QueryWrapper<SkuInfo> skuInfoQueryWrapper = new QueryWrapper<>();
+        skuInfoQueryWrapper.eq("id", skuId);
+        skuInfoQueryWrapper.select("price");
+        SkuInfo skuInfo = skuInfoMapper.selectOne(skuInfoQueryWrapper);
+        if (skuInfo != null) {
+            return skuInfo.getPrice();
+        }
+        return new BigDecimal(0);
+    }
+
+    @Override
+    public Map getSkuValueIdsMap(Long spuId) {
+        HashMap<Object, Object> hashMap = new HashMap<>();
+        List<Map> mapList = this.skuSaleAttrValueMapper.selectSkuValueIdsMap(spuId);
+//        if (!CollectionUtils.isEmpty(mapList)) {
+//            mapList.forEach(hashMap::putAll);
+//        }
+        if (!CollectionUtils.isEmpty(mapList)) {
+            for (Map map : mapList) {
+                hashMap.put(map.get("value_ids"),map.get("sku_id"));
+            }
+        }
+        return hashMap;
+    }
+
+    @Override
+    public List<SpuPoster> getSpuPosterBySpuId(Long spuId) {
+        // select * from spu_poster where spu_id = spuId;
+        LambdaQueryWrapper<SpuPoster> spuPosterLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        spuPosterLambdaQueryWrapper.eq(SpuPoster::getSpuId,spuId);
+        return this.spuPosterMapper.selectList(spuPosterLambdaQueryWrapper);
+    }
+
+    @Override
+    public List<BaseAttrInfo> getAttrList(Long skuId) {
+        return this.baseAttrInfoMapper.selectGetAttrList(skuId);
+    }
+
+    @Override
+    public List<SpuSaleAttr> getSpuSaleAttrListCheckBySku(Long skuId, Long spuId) {
+        return this.spuSaleAttrMapper.selectSpuSaleAttrListCheckBySku(skuId,spuId);
     }
 }

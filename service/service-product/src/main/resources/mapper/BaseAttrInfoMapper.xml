@@ -62,4 +62,16 @@
         order by bai.category_level, bai.id
     </select>
 
+
+    <select id="selectGetAttrList" resultMap="BaseAttrInfoMap">
+        select bai.id,
+               bai.attr_name,
+               bav.id value_id,
+               bav.value_name
+        from sku_attr_value sav
+                 inner join base_attr_info bai on bai.id = sav.attr_id
+                 inner join base_attr_value bav on bav.id = sav.value_id
+        where sav.sku_id = #{skuId};
+    </select>
+
 </mapper>
