@@ -23,4 +23,16 @@ public interface SkuManagerService {
      * @return
      */
     IPage<SkuInfo> getListSku(Page<SkuInfo> pageModel, Long category3Id);
+
+    /**
+     * 商品上架
+     * @param skuId
+     */
+    void onSale(Long skuId);
+
+    /**
+     * 商品下架
+     * @param skuId
+     */
+    void cancelSale(Long skuId);
 }

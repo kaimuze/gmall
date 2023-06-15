@@ -80,4 +80,22 @@ public class SkuManagerServiceImpl implements SkuManagerService {
         skuInfoLambdaQueryWrapper.orderByDesc(SkuInfo::getId);
         return this.skuInfoMapper.selectPage(pageModel,skuInfoLambdaQueryWrapper);
     }
+
+    @Override
+    public void onSale(Long skuId) {
+        // is_sale = 1
+        SkuInfo skuInfo = new SkuInfo();
+        skuInfo.setId(skuId);
+        skuInfo.setIsSale(1);
+        this.skuInfoMapper.updateById(skuInfo);
+    }
+
+    @Override
+    public void cancelSale(Long skuId) {
+        // is_sale = 0
+        SkuInfo skuInfo = new SkuInfo();
+        skuInfo.setId(skuId);
+        skuInfo.setIsSale(0);
+        this.skuInfoMapper.updateById(skuInfo);
+    }
 }

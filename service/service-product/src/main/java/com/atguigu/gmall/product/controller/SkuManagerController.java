@@ -37,4 +37,19 @@ public class SkuManagerController {
         return Result.ok(iPage);
     }
 
+    // 上架下架操作
+    // http://localhost/admin/product/cancelSale/20
+    // http://localhost/admin/product/onSale/21
+    @GetMapping("onSale/{skuId}")
+    public Result onSale(@PathVariable Long skuId){
+        this.skuManagerService.onSale(skuId);
+        return Result.ok();
+    }
+
+    @GetMapping("cancelSale/{skuId}")
+    public Result cancelSale(@PathVariable Long skuId){
+        this.skuManagerService.cancelSale(skuId);
+        return Result.ok();
+    }
+
 }
