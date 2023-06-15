@@ -1,10 +1,7 @@
 package com.atguigu.gmall.product.controller;
 
 import com.atguigu.gmall.common.result.Result;
-import com.atguigu.gmall.model.product.BaseSaleAttr;
-import com.atguigu.gmall.model.product.SpuImage;
-import com.atguigu.gmall.model.product.SpuInfo;
-import com.atguigu.gmall.model.product.SpuPoster;
+import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.service.ManagerService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -57,9 +54,23 @@ public class SpuManagerController {
     @PostMapping("saveSpuInfo")
     public Result saveSpuInfo(@RequestBody SpuInfo spuInfo){
         this.managerService.saveSpuInfo(spuInfo);
-
         return Result.ok();
     }
 
+    // http://localhost/admin/product/spuImageList/8 根据spuid获取spuimage列表
+    @GetMapping("spuImageList/{spuId}")
+    public Result getSpuImageList(@PathVariable Long spuId){
+        List<SpuImage> spuImageList = this.managerService.getSpuImageList(spuId);
+        return Result.ok(spuImageList);
+    }
+
+    // http://localhost/admin/product/spuSaleAttrList/8 根据spuId获取spu销售属性和属性值集合数据
+    @GetMapping ("/spuSaleAttrList/{spuId}")
+    public Result getSpuSaleAttrList(@PathVariable Long spuId) {
+        List<SpuSaleAttr> spuSaleAttrList = this.managerService.getSpuSaleAttrList(spuId);
+        return Result.ok(spuSaleAttrList);
+    }
+
+    // http://localhost/admin/product/saveSkuInfo  skuController
 
 }

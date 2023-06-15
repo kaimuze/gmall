@@ -237,7 +237,19 @@ public class ManagerServiceImpl implements ManagerService {
     }
 
     @Override
+    public List<SpuImage> getSpuImageList(Long spuId) {
+        LambdaQueryWrapper<SpuImage> spuImageLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        spuImageLambdaQueryWrapper.eq(SpuImage::getSpuId,spuId);
+        return this.spuImageMapper.selectList(spuImageLambdaQueryWrapper);
+    }
+
+    @Override
     public List<BaseSaleAttr> getSaleAttrList() {
         return this.baseSaleAttrMapper.selectList(null);
+    }
+
+    @Override
+    public List<SpuSaleAttr> getSpuSaleAttrList(Long spuId) {
+        return this.spuSaleAttrMapper.getSpuSaleAttrList(spuId);
     }
 }
