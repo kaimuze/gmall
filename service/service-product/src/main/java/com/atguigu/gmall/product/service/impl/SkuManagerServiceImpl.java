@@ -1,5 +1,6 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.SkuAttrValue;
 import com.atguigu.gmall.model.product.SkuImage;
 import com.atguigu.gmall.model.product.SkuInfo;
@@ -12,6 +13,8 @@ import com.atguigu.gmall.product.service.SkuManagerService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -38,6 +41,9 @@ public class SkuManagerServiceImpl implements SkuManagerService {
 
     @Autowired
     private SkuAttrValueMapper skuAttrValueMapper;
+
+    @Autowired
+    private RedissonClient redissonClient;
 
     @Override
     public void saveSkuInfo(SkuInfo skuInfo) {
@@ -71,6 +77,10 @@ public class SkuManagerServiceImpl implements SkuManagerService {
                 this.skuAttrValueMapper.insert(skuAttrValue);
             });
         }
+
+        //在添加sku的时候,就将skuid添加到布隆过滤器中,为之后的查询请求提供帮助(例如在商品详情信息汇总处)
+        RBloomFilter<Object> bloomFilter = this.redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        bloomFilter.add(skuInfo.getId());
     }
 
     @Override

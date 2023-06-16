@@ -1,12 +1,16 @@
 package com.atguigu.gmall.item.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.item.service.ItemService;
 import com.atguigu.gmall.model.item.ItemVo;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.client.ProductFeignClient;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.jws.HandlerChain;
@@ -31,11 +35,20 @@ public class ItemServiceImpl implements ItemService {
     @Autowired
     private ProductFeignClient productFeignClient;
 
+    @Autowired
+    private RedissonClient redissonClient;
+
     @Override
     public ItemVo getItem(Long skuId) {
         //数据汇总
 
         ItemVo itemVo = new ItemVo();
+
+        // 判断布隆过滤器是否包含数据  在商品详情处做判断,是否继续向下查询
+        RBloomFilter<Object> bloomFilter = redissonClient.getBloomFilter(RedisConst.SKU_BLOOM_FILTER);
+        if (!bloomFilter.contains(skuId)) {
+            return itemVo;
+        }
 
         // 1 skuinfo
         SkuInfo skuInfo = this.productFeignClient.getSkuInfo(skuId);
