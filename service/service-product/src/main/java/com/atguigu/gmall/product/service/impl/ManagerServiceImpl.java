@@ -347,11 +347,13 @@ public class ManagerServiceImpl implements ManagerService {
         // select * from sku_info where sku_id = skuId;
         SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
 
-        // select * from sku_image where sku_id = skuId;
-        LambdaQueryWrapper<SkuImage> skuImageLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        skuImageLambdaQueryWrapper.eq(SkuImage::getSkuId, skuId);
-        List<SkuImage> skuImageList = this.skuImageMapper.selectList(skuImageLambdaQueryWrapper);
-        skuInfo.setSkuImageList(skuImageList);
+        if (skuInfo != null) {
+            // select * from sku_image where sku_id = skuId;
+            LambdaQueryWrapper<SkuImage> skuImageLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            skuImageLambdaQueryWrapper.eq(SkuImage::getSkuId, skuId);
+            List<SkuImage> skuImageList = this.skuImageMapper.selectList(skuImageLambdaQueryWrapper);
+            skuInfo.setSkuImageList(skuImageList);
+        }
         return skuInfo;
     }
 

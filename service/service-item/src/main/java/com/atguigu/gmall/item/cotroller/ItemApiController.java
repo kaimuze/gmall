@@ -3,6 +3,7 @@ package com.atguigu.gmall.item.cotroller;
 import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.item.service.ItemService;
 import com.atguigu.gmall.model.item.ItemVo;
+import io.lettuce.core.RedisClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
