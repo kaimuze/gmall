@@ -22,4 +22,10 @@ public interface SearchService {
     void lowerGoods(Long skuId);
 
 
+    //商品热度访问流程  web-all -> Gateway -> service-item -> service-list
+    /**
+     * 记录商品热度排名
+     * @param skuId
+     */
+    void incrHotScore(Long skuId);
 }

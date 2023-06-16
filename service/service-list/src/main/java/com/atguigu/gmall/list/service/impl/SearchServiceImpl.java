@@ -8,10 +8,12 @@ import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -31,9 +33,13 @@ public class SearchServiceImpl implements SearchService {
     @Autowired
     private GoodsRepository goodsRepository;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
 
     /**
      * 上架的本质: 首先给Goods赋值,然后将Goods保存到es索引库中
+     *
      * @param skuId
      */
     @Override
@@ -92,5 +98,21 @@ public class SearchServiceImpl implements SearchService {
     @Override
     public void lowerGoods(Long skuId) {
         this.goodsRepository.deleteById(skuId);
+    }
+
+    @Override
+    public void incrHotScore(Long skuId) {
+        //本质是更新es中hotScore字段的数据 每访问一次,更新一次.这样会伤害性能,每次更新都有io
+        //借助redis 记录当前这个商品被访问的次数,如果访问次数达到一定数量,再去更新
+        String hotKey = "hotScore";
+        Double count = this.redisTemplate.opsForZSet().incrementScore(hotKey, "skuId:" + skuId, 1);
+        if (count % 10 == 0) {
+            //更新es
+            Optional<Goods> optional = this.goodsRepository.findById(skuId);
+            Goods goods = optional.get();
+            goods.setHotScore(count.longValue());
+            //将更新后的数据放入es
+            this.goodsRepository.save(goods);
+        }
     }
 }

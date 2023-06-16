@@ -39,7 +39,7 @@ public class ListApiController {
     }
 
     /**
-     * es商品上下架
+     * es商品上下架  访问此控制器创建索引库 7版本后无需访问,自动创建,前提是有接口继承 public interface GoodsRepository extends ElasticsearchRepository<Goods,Long>
      * @param skuId
      * @return
      */
@@ -57,6 +57,17 @@ public class ListApiController {
     @GetMapping("inner/lowerGoods/{skuId}")
     public Result lowerGoods(@PathVariable Long skuId){
         this.searchService.lowerGoods(skuId);
+        return Result.ok();
+    }
+
+    /**
+     * 触发热度排名
+     * @param skuId
+     * @return
+     */
+    @GetMapping("inner/incrHotScore/{skuId}")
+    public Result incrHotScore(@PathVariable Long skuId){
+        this.searchService.incrHotScore(skuId);
         return Result.ok();
     }
 

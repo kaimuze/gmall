@@ -1,7 +1,9 @@
 package com.atguigu.gmall.item.service.impl;
 
 import com.alibaba.fastjson.JSON;
+import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.item.service.ItemService;
+import com.atguigu.gmall.list.client.ListFeignClient;
 import com.atguigu.gmall.model.item.ItemVo;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.client.ProductFeignClient;
@@ -36,6 +38,9 @@ public class ItemServiceImpl implements ItemService {
 
     @Autowired
     private ThreadPoolExecutor threadPoolExecutor;
+
+    @Autowired
+    private ListFeignClient listFeignClient;
 
     @Override
     public ItemVo getItem(Long skuId) {
@@ -106,6 +111,12 @@ public class ItemServiceImpl implements ItemService {
             itemVo.setSkuAttrList(attrMapList);
         },threadPoolExecutor);
 
+        // 获取远程调用热度排名
+        CompletableFuture<Void> incrCompletableFuture = CompletableFuture.runAsync(() -> {
+            this.listFeignClient.incrHotScore(skuId);
+        }, threadPoolExecutor);
+
+
         // 多任务组合 汇集所有远程调用的线程进行数据汇总
         CompletableFuture.allOf(
                 skuInfoCompletableFuture,
@@ -114,7 +125,8 @@ public class ItemServiceImpl implements ItemService {
                 spuSaleAttrCompletableFuture,
                 spuPosterCompletableFuture,
                 strCompletableFuture,
-                attrCompletableFuture).join();
+                attrCompletableFuture,
+                incrCompletableFuture).join();
         //释放资源
 //        threadPoolExecutor.shutdown();
         // 返回数据
