@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.google.j2objc.annotations.AutoreleasePool;
 import com.sun.scenario.effect.impl.prism.ps.PPSBlend_ADDPeer;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -485,6 +486,11 @@ public class ManagerServiceImpl implements ManagerService {
         }
         // 返回数据
         return list;
+    }
+
+    @Override
+    public BaseTrademark getTrademarkByTrademarkId(Long tmId) {
+        return this.baseTrademarkMapper.selectById(tmId);
     }
 
     @Override

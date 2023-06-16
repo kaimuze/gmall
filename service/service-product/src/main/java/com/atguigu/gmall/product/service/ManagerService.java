@@ -160,4 +160,11 @@ public interface ManagerService {
      * @return
      */
     List<JSONObject> getCategoryList();
+
+    /**
+     * 根据品牌id 获取品牌数据
+     * @param tmId
+     * @return
+     */
+    BaseTrademark getTrademarkByTrademarkId(Long tmId);
 }

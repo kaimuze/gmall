@@ -47,4 +47,8 @@ public interface ProductFeignClient {
     @GetMapping("/api/product/getBaseCategoryList")
     public Result getBaseCategoryList();
 
+    //根据品牌id获取品牌数据
+    @GetMapping("/api/product/inner/getTrademark/{tmId}")
+    public BaseTrademark getTrademark(@PathVariable Long tmId);
+
 }

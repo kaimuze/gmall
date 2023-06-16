@@ -77,4 +77,9 @@ public class ProductApiController {
         return Result.ok(categoryList);
     }
 
+    @GetMapping("inner/getTrademark/{tmId}")
+    public BaseTrademark getTrademark(@PathVariable Long tmId){
+        return this.managerService.getTrademarkByTrademarkId(tmId);
+    }
+
 }
