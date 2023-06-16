@@ -1,5 +1,6 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.*;
 import com.atguigu.gmall.product.mapper.*;
 import com.atguigu.gmall.product.service.ManagerService;
@@ -9,7 +10,10 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sun.scenario.effect.impl.prism.ps.PPSBlend_ADDPeer;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -18,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName: ManagerServiceImpl
@@ -75,6 +80,12 @@ public class ManagerServiceImpl implements ManagerService {
 
     @Autowired
     private SkuSaleAttrValueMapper skuSaleAttrValueMapper;
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     public List<BaseCategory1> getCategory1() {
@@ -270,8 +281,69 @@ public class ManagerServiceImpl implements ManagerService {
         return this.spuSaleAttrMapper.getSpuSaleAttrList(spuId);
     }
 
+    /**
+     * redis整合项目
+     *
+     * @param skuId
+     * @return
+     */
     @Override
     public SkuInfo getSkuInfo(Long skuId) {
+        /*
+            1. 查询时,先判断缓存是否存在
+                true 直接取缓存
+                false 查询数据库后放入缓存
+         */
+        try {
+            SkuInfo skuInfo = new SkuInfo();
+            // 缓存获取数据 确定数据类型 hash类型适合存储对象 hset key field value 便于修改 如果是单纯的显示,不存在修改的情况,String类型也可
+            // key:sku:skuId:info
+            String skuKey = RedisConst.SKUKEY_PREFIX + skuId + RedisConst.SKUKEY_SUFFIX;
+            skuInfo = (SkuInfo) redisTemplate.opsForValue().get(skuKey);
+
+            //判断缓存中是否取到数据
+            if (skuInfo == null) {
+                //缓存没有数据  保护数据库防止缓存击穿,加锁保护  上锁的两种方式 1.reids 2.redisson
+                // 锁: 在获取数据库时使用  redisson
+                String lockKey = RedisConst.SKUKEY_PREFIX + skuId + RedisConst.SKULOCK_SUFFIX;
+                RLock lock = this.redissonClient.getLock(lockKey);
+
+                // redisson尝试获取锁方法
+                // 尝试时间,等待时间,时间单位
+                boolean result = lock.tryLock(RedisConst.SKULOCK_EXPIRE_PX1, RedisConst.SKULOCK_EXPIRE_PX2, TimeUnit.SECONDS);
+                if (result) {
+                    try {
+                        //数据库中获取数据并放入缓存
+                        skuInfo = this.getInfoFromDB(skuId);
+                        // 判断数据库中是否真的存在,为防止查询一个根本不存在的对象进行保护
+                        if (skuInfo == null){
+                            //数据库中根部不存在这一对象,创建空对象,对数据库进行保护
+                            SkuInfo skuInfoIsNull = new SkuInfo();
+                            this.redisTemplate.opsForValue().set(skuKey,skuInfoIsNull,RedisConst.SKUKEY_TEMPORARY_TIMEOUT,TimeUnit.SECONDS);
+                            return skuInfoIsNull;
+                        }
+                        // 数据库中存在该数据
+                        this.redisTemplate.opsForValue().set(skuKey,skuInfo,RedisConst.SKUKEY_TIMEOUT,TimeUnit.SECONDS);
+                        return skuInfo;
+                    } finally {
+                        lock.unlock();
+                    }
+                }else {
+                    //没拿到锁的线程 自旋机制
+                    Thread.sleep(500);
+                    return getSkuInfo(skuId);
+                }
+            } else {
+                return skuInfo;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // 这里怎么理解? 为防止上面的业务逻辑出现宕机等乱七八糟意外,直接查数据库兜底操作.
+        return getInfoFromDB(skuId);
+    }
+
+    private SkuInfo getInfoFromDB(Long skuId) {
         // select * from sku_info where sku_id = skuId;
         SkuInfo skuInfo = skuInfoMapper.selectById(skuId);
 
@@ -311,7 +383,7 @@ public class ManagerServiceImpl implements ManagerService {
 //        }
         if (!CollectionUtils.isEmpty(mapList)) {
             for (Map map : mapList) {
-                hashMap.put(map.get("value_ids"),map.get("sku_id"));
+                hashMap.put(map.get("value_ids"), map.get("sku_id"));
             }
         }
         return hashMap;
@@ -321,7 +393,7 @@ public class ManagerServiceImpl implements ManagerService {
     public List<SpuPoster> getSpuPosterBySpuId(Long spuId) {
         // select * from spu_poster where spu_id = spuId;
         LambdaQueryWrapper<SpuPoster> spuPosterLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        spuPosterLambdaQueryWrapper.eq(SpuPoster::getSpuId,spuId);
+        spuPosterLambdaQueryWrapper.eq(SpuPoster::getSpuId, spuId);
         return this.spuPosterMapper.selectList(spuPosterLambdaQueryWrapper);
     }
 
@@ -332,6 +404,6 @@ public class ManagerServiceImpl implements ManagerService {
 
     @Override
     public List<SpuSaleAttr> getSpuSaleAttrListCheckBySku(Long skuId, Long spuId) {
-        return this.spuSaleAttrMapper.selectSpuSaleAttrListCheckBySku(skuId,spuId);
+        return this.spuSaleAttrMapper.selectSpuSaleAttrListCheckBySku(skuId, spuId);
     }
 }
