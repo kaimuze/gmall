@@ -1,5 +1,6 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.common.cache.GmallCache;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.model.product.*;
@@ -20,10 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @ClassName: ManagerServiceImpl
@@ -317,19 +320,19 @@ public class ManagerServiceImpl implements ManagerService {
                         //数据库中获取数据并放入缓存
                         skuInfo = this.getInfoFromDB(skuId);
                         // 判断数据库中是否真的存在,为防止查询一个根本不存在的对象进行保护
-                        if (skuInfo == null){
+                        if (skuInfo == null) {
                             //数据库中根部不存在这一对象,创建空对象,对数据库进行保护
                             SkuInfo skuInfoIsNull = new SkuInfo();
-                            this.redisTemplate.opsForValue().set(skuKey,skuInfoIsNull,RedisConst.SKUKEY_TEMPORARY_TIMEOUT,TimeUnit.SECONDS);
+                            this.redisTemplate.opsForValue().set(skuKey, skuInfoIsNull, RedisConst.SKUKEY_TEMPORARY_TIMEOUT, TimeUnit.SECONDS);
                             return skuInfoIsNull;
                         }
                         // 数据库中存在该数据
-                        this.redisTemplate.opsForValue().set(skuKey,skuInfo,RedisConst.SKUKEY_TIMEOUT,TimeUnit.SECONDS);
+                        this.redisTemplate.opsForValue().set(skuKey, skuInfo, RedisConst.SKUKEY_TIMEOUT, TimeUnit.SECONDS);
                         return skuInfo;
                     } finally {
                         lock.unlock();
                     }
-                }else {
+                } else {
                     //没拿到锁的线程 自旋机制
                     Thread.sleep(500);
                     return getSkuInfo(skuId);
@@ -407,6 +410,81 @@ public class ManagerServiceImpl implements ManagerService {
     @GmallCache(prefix = "AttrList:")
     public List<BaseAttrInfo> getAttrList(Long skuId) {
         return this.baseAttrInfoMapper.selectGetAttrList(skuId);
+    }
+
+    @Override
+    @GmallCache(prefix = "index:")
+    public List<JSONObject> getCategoryList() {
+
+        ArrayList<JSONObject> list = new ArrayList<>();
+        //获取所有分类数据
+        List<BaseCategoryView> baseCategoryViewList = this.baseCategoryViewMapper.selectList(null);
+
+        //根据一级分类id 进行分组 一级分类id和一级分类名称
+        // 返回的map数据类型  key:category1Id  value:List<BaseCategoryView>
+        Map<Long, List<BaseCategoryView>> category1Map = baseCategoryViewList.stream().collect(Collectors.groupingBy(BaseCategoryView::getCategory1Id));
+        //声明变量index 表名当前是一级分类id的第几个
+        int index = 1;
+        // 遍历map
+        for (Map.Entry<Long, List<BaseCategoryView>> entry : category1Map.entrySet()) {
+            // key: 一级分类id
+            Long category1Id = entry.getKey();
+            // value: List<BaseCategoryView> 一级分类id对应的数据
+            List<BaseCategoryView> baseCategoryViewList1 = entry.getValue();
+            // 创建JSONObject对象 封装数据
+            JSONObject category1 = new JSONObject();
+            category1.put("index", index);
+            // 存的二级分类数据集合
+//            category1.put("categoryChild","");
+            category1.put("categoryName",baseCategoryViewList1.get(0).getCategory1Name());
+            category1.put("categoryId",category1Id);
+            //index更新
+            index++;
+
+            //声明一个结果用于存放二级分类id数据集合对象  一级分类下有多个根据二级分类id划分的集合
+            ArrayList<JSONObject> categoryChild2 = new ArrayList<>();
+
+            //获取二级分类数据
+            // key: category2Id value: List<BaseCategoryView>
+            Map<Long, List<BaseCategoryView>> category2Map = baseCategoryViewList1.stream().collect(Collectors.groupingBy(BaseCategoryView::getCategory2Id));
+            for (Map.Entry<Long, List<BaseCategoryView>> entry1 : category2Map.entrySet()) {
+                //二级分类id
+                Long category2Id = entry1.getKey();
+                //二级分类id对应的数据
+                List<BaseCategoryView> baseCategoryViewList2 = entry1.getValue();
+                JSONObject category2 = new JSONObject();
+                // categoryChild 存的三级分类数据集合
+//                category2.put("categoryChild","");
+                category2.put("categoryName",baseCategoryViewList2.get(0).getCategory2Name());
+                category2.put("categoryId",category2Id);
+
+                //将每一个二级分类数据对象存入集合 保存二级分类数据
+                categoryChild2.add(category2);
+
+                // 三级分类id数据集合
+                ArrayList<JSONObject> categoryChild3 = new ArrayList<>();
+
+                //获取三级分类数据 三级分类id不需要分组,直接从二级分类数据集合中获取数据即可
+                baseCategoryViewList2.forEach(baseCategoryView -> {
+                    JSONObject category3 = new JSONObject();
+                    category3.put("categoryId",baseCategoryView.getCategory3Id());
+                    category3.put("categoryName",baseCategoryView.getCategory3Name());
+
+                    //将每一个三级分类id数据添加到集合中
+                    categoryChild3.add(category3);
+                });
+
+                // 将三级分类数据集合存储到二级分类id的对象属性中封装
+                category2.put("categoryChild",categoryChild3);
+            }
+            // 将二级分类数据集合存储到一级分类id的对象属性中封装
+            category1.put("categoryChild",categoryChild2);
+
+            //将整个一级分类数据存储到最后的大集合中
+            list.add(category1);
+        }
+        // 返回数据
+        return list;
     }
 
     @Override

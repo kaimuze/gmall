@@ -33,11 +33,10 @@ public class ItemController {
         Result<Map> result = itemFeignClient.skuItem(skuId);
 
         model.addAllAttributes(result.getData());
-
-
-
         // 返回商品详情视图名称
         return "item/item";
     }
+
+
 
 }
