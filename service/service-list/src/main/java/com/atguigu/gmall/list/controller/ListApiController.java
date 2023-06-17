@@ -70,6 +70,11 @@ public class ListApiController {
         return Result.ok();
     }
 
+    /**
+     * es入口检索数据
+     * @param searchParam
+     * @return
+     */
     @PostMapping
     public Result searchList(@RequestBody SearchParam searchParam){
 

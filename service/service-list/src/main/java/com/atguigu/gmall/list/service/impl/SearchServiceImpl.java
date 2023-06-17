@@ -25,6 +25,7 @@ import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
 import org.elasticsearch.search.aggregations.bucket.nested.ParsedNested;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedLongTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortOrder;
@@ -311,94 +312,131 @@ public class SearchServiceImpl implements SearchService {
     }
 
     /**
-     * 转换结果集方法  searchResponse --> searchResponseVo
-     *
+     * 转换结果集方法
+     *   将上面查询到的数据对象searchResponse,进行数据转换.转换为我们需要的数据类型SearchResponseVo
+     *   即: searchResponse ----> searchResponseVo
      * @param searchResponse
      * @return
      */
     private SearchResponseVo parseSearchResult(SearchResponse searchResponse) {
+        SearchResponseVo searchResponseVo = new SearchResponseVo();
         /*
-            private List<SearchResponseTmVo> trademarkList;
-            private List<SearchResponseAttrVo> attrsList = new ArrayList<>();
-            private List<Goods> goodsList = new ArrayList<>();
-            private Long total;//总记录数
+         赋值这些字段:
+         SearchResponseVo类中的属性就是这些,我们要做的就是给这写属性赋上值即可
+         private List<SearchResponseTmVo> trademarkList; 品牌
+         private List<SearchResponseAttrVo> attrsList = new ArrayList<>(); 平台属性
+         private List<Goods> goodsList = new ArrayList<>(); //商品
+         private Long total;//总记录数
          */
 
-        // private Long total;//总记录数
-        SearchResponseVo searchResponseVo = new SearchResponseVo();
+        // 总记录数total赋值
+        // 总记录数在es库执行完插叙操作的返回结果集中的hits中
         SearchHits hits = searchResponse.getHits();
         long value = hits.getTotalHits().value;
         searchResponseVo.setTotal(value);
 
-        // private List<Goods> goodsList = new ArrayList<>();
+        // 赋值goodsList
+        // 创建一个封装goods的空集合集合,再将goods数据封装到集合中,最后赋值给GoodsList
         ArrayList<Goods> goodsList = new ArrayList<>();
+        //集合中每一个存储的数据类型是Goods,所以要给Goods赋值,数据在hits/hits/source中
         SearchHit[] subHits = hits.getHits();
-        if (subHits != null && subHits.length > 0) {
+        if (subHits != null && subHits.length > 0){
+            //循环遍历
             for (SearchHit subHit : subHits) {
+                //获取到hits/hits/的每一个_source对象
                 String sourceAsString = subHit.getSourceAsString();
-                //字符串转换为Goods
+                // 将字符串转换为Goods
                 Goods goods = JSON.parseObject(sourceAsString, Goods.class);
 
-                //细节:  在获取到数据时,判断数据中是否有高亮部分
-                if (subHit.getHighlightFields().get("title") != null) {
-                    //覆盖原来的title
+                //细节: 如果用户通过关键词检索,则需要获取到高亮的商品名称
+                if (subHit.getHighlightFields().get("title")!=null){
+                    //如果不为空,说明有高亮显示.要将原来的title覆盖
                     Text title = subHit.getHighlightFields().get("title").getFragments()[0];
                     goods.setTitle(title.toString());
                 }
-
-                //goods添加到集合中
+                //将每一次循环得到的_source对象(上面一步已经转换为了goods对象类型)都放到集合里
                 goodsList.add(goods);
             }
         }
+        //商品集合赋值完成
         searchResponseVo.setGoodsList(goodsList);
 
-        // private List<SearchResponseTmVo> trademarkList;
-//        ArrayList<SearchResponseTmVo> trademarkList = new ArrayList<>();
+        // 赋值品牌数据
+        //List<SearchResponseTmVo> trademarkList = new ArrayList<>();
+        // trademarkList空数据 ,需要赋值
+        // 获取聚合中对应的品牌数据 转换成map的key-value形式,方便获取
         Map<String, Aggregation> aggregationMap = searchResponse.getAggregations().asMap();
+        //获取品牌id的聚合对象tmIdAgg
+        //Aggregation tmIdAgg = aggregationMap.get("tmIdAgg");
+        // 再接着向下直接获取不道bucket对象,因为返回的类Aggregation相对比较大所以上面需要将类强转为较小的类
         ParsedLongTerms tmIdAgg = (ParsedLongTerms) aggregationMap.get("tmIdAgg");
+        //现在就可以继续向下调用,找到bucket了(bucket是一个集合: 使用stream流遍历)
         List<SearchResponseTmVo> trademarkList = tmIdAgg.getBuckets().stream().map(bucket -> {
+            //创建一个对象,接收流中bucket集合数据
             SearchResponseTmVo searchResponseTmVo = new SearchResponseTmVo();
-
-            String keyAsString = bucket.getKeyAsString();
+            // 为searchResponseTmVo的每一个属性赋值
+            // 获取到品牌id "key":1
+            String keyAsString = ((Terms.Bucket)bucket).getKeyAsString();
             searchResponseTmVo.setTmId(Long.parseLong(keyAsString));
 
-            ParsedStringTerms tmNameAgg = bucket.getAggregations().get("tmNameAgg");
+            //获取到品牌名称,tmNameAgg是获取id的子聚合,不能直接get得到
+            //Aggregation tmNameAgg = bucket.getAggregations().get("tmNameAgg");
+            //并且还需要强转为小类才能获取到
+            ParsedStringTerms tmNameAgg = ((Terms.Bucket)bucket).getAggregations().get("tmNameAgg");
             String tmName = tmNameAgg.getBuckets().get(0).getKeyAsString();
             searchResponseTmVo.setTmName(tmName);
 
-            ParsedStringTerms tmLogoUrlAgg = bucket.getAggregations().get("tmLogoUrlAgg");
+            // 获取品牌的logoUrl
+            ParsedStringTerms tmLogoUrlAgg = ((Terms.Bucket) bucket).getAggregations().get("tmLogoUrlAgg");
             String tmLogoUrl = tmLogoUrlAgg.getBuckets().get(0).getKeyAsString();
             searchResponseTmVo.setTmLogoUrl(tmLogoUrl);
 
+            //返回品牌对象
             return searchResponseTmVo;
         }).collect(Collectors.toList());
-
         searchResponseVo.setTrademarkList(trademarkList);
 
-        // private List<SearchResponseAttrVo> attrsList = new ArrayList<>();
-//        ArrayList<SearchResponseAttrVo> attrsList = new ArrayList<>();
+        // 赋值平台属性 es中的数据结果集类型是nested类型,需要转换
+        //List<SearchResponseAttrVo> attrsList = new ArrayList<>();
+        //获取到数据 attrAgg查询DSL语句中的数据类型是nested,而查询到的结果集不是该类型,是map,所以下面需要转换为nested类型
         ParsedNested attrAgg = (ParsedNested) aggregationMap.get("attrAgg");
+        //这一步取到 aggs
         ParsedLongTerms attrIdAgg = attrAgg.getAggregations().get("attrIdAgg");
+        // 获取到bucket集合,使用stream流 封装数据
         List<SearchResponseAttrVo> attrsList = attrIdAgg.getBuckets().stream().map(bucket -> {
+            //创建对象
             SearchResponseAttrVo searchResponseAttrVo = new SearchResponseAttrVo();
-            String keyAsString = bucket.getKeyAsString();
+            //赋值平台属性id
+            String keyAsString = ((Terms.Bucket)bucket).getKeyAsString();
             searchResponseAttrVo.setAttrId(Long.parseLong(keyAsString));
 
-            ParsedStringTerms attrNameAgg = bucket.getAggregations().get("attrNameAgg");
+            //赋值平台属性名
+            ParsedStringTerms attrNameAgg = ((Terms.Bucket)bucket).getAggregations().get("attrNameAgg");
             String attrName = attrNameAgg.getBuckets().get(0).getKeyAsString();
             searchResponseAttrVo.setAttrName(attrName);
 
-            // 平台属性值是集合
-            ParsedStringTerms attrValueAgg = bucket.getAggregations().get("attrValueAgg");
-            List<String> valueList = attrValueAgg.getBuckets().stream().map(item -> {
-                return item.getKeyAsString();
-            }).collect(Collectors.toList());
-            searchResponseAttrVo.setAttrValueList(valueList);
+            //赋值平台属性值名 不是一个数据了,因为一个属性下 对应多个属性值名
+            ParsedStringTerms attrValueAgg = ((Terms.Bucket)bucket).getAggregations().get("attrValueAgg");
+            // 将attrValueAgg集合中的每一个key都拿出来
+            // Terms.Bucket::getKeyAsString表示根据key获取到数据
+            List<String> attrValueList = attrValueAgg.getBuckets().stream().map(Terms.Bucket::getKeyAsString).collect(Collectors.toList());
+//            //第二种方法: 普通for循环
+//            ArrayList<String> strings = new ArrayList<>();
+//            for (Terms.Bucket attrValueAggBucket : attrValueAgg.getBuckets()) {
+//                String attrValue = attrValueAggBucket.getKeyAsString();
+//                strings.add(attrValue);
+//            }
+//            searchResponseAttrVo.setAttrValueList(strings);
 
+            searchResponseAttrVo.setAttrValueList(attrValueList);
+
+            //返回数据
             return searchResponseAttrVo;
         }).collect(Collectors.toList());
 
-        //返回封装后的数据
+        searchResponseVo.setAttrsList(attrsList);
+
+        //返回对象
         return searchResponseVo;
     }
 }
