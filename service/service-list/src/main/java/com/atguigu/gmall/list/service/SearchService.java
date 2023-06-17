@@ -1,5 +1,8 @@
 package com.atguigu.gmall.list.service;
 
+import com.atguigu.gmall.model.list.SearchParam;
+import com.atguigu.gmall.model.list.SearchResponseVo;
+
 /**
  * @ClassName: SearchService
  * @author: javaermamba
@@ -28,4 +31,11 @@ public interface SearchService {
      * @param skuId
      */
     void incrHotScore(Long skuId);
+
+    /**
+     * es检索数据方法
+     * @param searchParam
+     * @return
+     */
+    SearchResponseVo search(SearchParam searchParam) throws Exception;
 }
