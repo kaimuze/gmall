@@ -1,10 +1,19 @@
 package com.atguigu.gmall.user.controller;
 
+import com.alibaba.fastjson.JSONObject;
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.common.result.Result;
+import com.atguigu.gmall.common.util.IpUtil;
 import com.atguigu.gmall.model.user.UserInfo;
 import com.atguigu.gmall.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName: PassportApiController
@@ -19,19 +28,40 @@ public class PassportApiController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     @PostMapping("login")
-    public Result login(@RequestBody UserInfo userInfo){
+    public Result login(@RequestBody UserInfo userInfo, HttpServletRequest request) {
         //登录需要 用户名 密码
         UserInfo info = this.userService.login(userInfo);
 
-        if (info != null){
-            return Result.ok();
-        }else {
+        if (info != null) {
+
+            //生成 token 存到 cookie中
+            String token = UUID.randomUUID().toString();
+            HashMap<String, Object> hashMap = new HashMap<>();
+            hashMap.put("token", token);
+            // 登录完成之后,需要在页面显示用户昵称 写入cookie
+            hashMap.put("nickName", info.getNickName());
+
+
+            //用户id存入缓存 判断用户是否登录的关键点
+            // key=user:login:token
+            String userLoginKey = RedisConst.USER_LOGIN_KEY_PREFIX + token;
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("userId", info.getId().toString());
+            jsonObject.put("ip", IpUtil.getIpAddress(request));
+
+            this.redisTemplate.opsForValue().set(userLoginKey, jsonObject.toJSONString(), RedisConst.USERKEY_TIMEOUT, TimeUnit.SECONDS);
+
+
+            return Result.ok(hashMap);
+        } else {
             return Result.fail().message("用户名密码错误");
         }
 
     }
-
 
 
 }
