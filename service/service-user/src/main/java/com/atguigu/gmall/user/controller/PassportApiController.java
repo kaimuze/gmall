@@ -63,5 +63,17 @@ public class PassportApiController {
 
     }
 
+    @GetMapping("loginout")
+    public Result loginout(HttpServletRequest request){
+        //本质删除 缓存数据 删除cookie中的数据
+        // 前端代码将token存在了cookie 和 header中
+        String token = request.getHeader("token");
+        String userLoginKey = RedisConst.USER_LOGIN_KEY_PREFIX + token;
+        this.redisTemplate.delete(userLoginKey);
+
+        //删除cookie 在js中实现了
+        return Result.ok();
+    }
+
 
 }
