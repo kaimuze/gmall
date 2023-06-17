@@ -63,7 +63,7 @@ public class PassportApiController {
 
     }
 
-    @GetMapping("loginout")
+    @GetMapping("logout")
     public Result loginout(HttpServletRequest request){
         //本质删除 缓存数据 删除cookie中的数据
         // 前端代码将token存在了cookie 和 header中
