@@ -139,6 +139,11 @@ public class CartServiceImpl implements CartService {
                         cartInfoLogin.setSkuNum(cartInfoLogin.getSkuNum()+cartInfoNoLogin.getSkuNum());
                         cartInfoLogin.setUpdateTime(new Date());
 
+                        // 合并细节 选中状态的合并
+                        if (cartInfoNoLogin.getIsChecked().intValue() == 1 && cartInfoLogin.getIsChecked().intValue() == 0){
+                            cartInfoLogin.setIsChecked(1);
+                        }
+
                         //更新好的数据写入缓存
                         boundHashOperations.put(cartInfoLogin.getSkuId().toString(),cartInfoLogin);
 
