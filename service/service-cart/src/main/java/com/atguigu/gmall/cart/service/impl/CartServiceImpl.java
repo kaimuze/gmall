@@ -8,6 +8,7 @@ import com.atguigu.gmall.model.product.SkuInfo;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.BoundHashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -98,31 +99,80 @@ public class CartServiceImpl implements CartService {
     @Override
     public List<CartInfo> getCartList(String userId, String userTempId) {
 
-        //声明购物车集合数据对象
-        List<CartInfo> cartInfoList = new ArrayList<>();
+        //声明为登录购物车集合数据对象
+        List<CartInfo> cartInfoNoLoginList = new ArrayList<>();
 
         // 判断当前用户id 是否是登录状态
-        if (!StringUtils.isEmpty(userId)){
+        if (!StringUtils.isEmpty(userTempId)){
             //登录了
             String cartKey = this.getCartKey(userId);
             //获取登录的购物车数据
-            cartInfoList = this.redisTemplate.opsForHash().values(cartKey);
+            cartInfoNoLoginList = this.redisTemplate.opsForHash().values(cartKey);
         }
 
-        if (!StringUtils.isEmpty(userTempId)){
-            //获取未登录购物车集合数据
-            String cartKey = this.getCartKey(userTempId);
-            cartInfoList = this.redisTemplate.opsForHash().values(cartKey);
-        }
-
-        // 查询之后 排序购物项  按照修改时间进行排序
-        if (!CollectionUtils.isEmpty(cartInfoList)){
-            cartInfoList.sort( (o1, o2) -> {
+        // 查询之后 排序购物项  按照修改时间进行排序 未登录
+        if (!CollectionUtils.isEmpty(cartInfoNoLoginList)){
+            cartInfoNoLoginList.sort( (o1, o2) -> {
                 return DateUtil.truncatedCompareTo(o2.getUpdateTime(), o1.getUpdateTime(), Calendar.SECOND);
             });
+
+            //返回未登录购物车集合数据
+            return cartInfoNoLoginList;
         }
 
-        return cartInfoList;
+        //++++++++++++++++++++++上: 未登录  下:登录++++++++++++++++++++++++++++++++++++++
+        if (!StringUtils.isEmpty(userId)){
+            String cartKey = this.getCartKey(userId);
+            // BoundHashOperations<H, HK, HV>  H:缓存key的数据类型 HK:field数据类型 HV:value的数据类型
+            BoundHashOperations<String,String,CartInfo> boundHashOperations = this.redisTemplate.boundHashOps(cartKey);
+//            boundHashOperations.get(); 获取value数据方法
+
+            // 合并情况:  只有未登录购物车中有数据的情况涉及到合并
+            if (!CollectionUtils.isEmpty(cartInfoNoLoginList)){
+                cartInfoNoLoginList.stream().forEach(cartInfoNoLogin -> {
+                    //判断   登录购物车中是否包含未登录购物车相同skuid的购物项
+                    if (boundHashOperations.hasKey(cartInfoNoLogin.getSkuId().toString())){
+                        // 包含   则累加
+                        CartInfo cartInfoLogin = boundHashOperations.get(cartInfoNoLogin.getSkuId().toString());
+                        // 未登录向登录合并数据
+                        // 数量合并
+                        cartInfoLogin.setSkuNum(cartInfoLogin.getSkuNum()+cartInfoNoLogin.getSkuNum());
+                        cartInfoLogin.setUpdateTime(new Date());
+
+                        //更新好的数据写入缓存
+                        boundHashOperations.put(cartInfoLogin.getSkuId().toString(),cartInfoLogin);
+
+                    }else {
+                        // 未包含
+                        // 覆盖未登录的用户id 因为未登录用户id是临时用户id
+                        cartInfoNoLogin.setUserId(userId);
+                        cartInfoNoLogin.setCreateTime(new Date());
+                        cartInfoNoLogin.setUpdateTime(new Date());
+                        // 直接写入缓存
+                        boundHashOperations.put(cartInfoNoLogin.getSkuId().toString(),cartInfoNoLogin);
+                    }
+
+                });
+            }
+
+            // 删除未登录购物车集合数据
+            this.redisTemplate.delete(this.getCartKey(userTempId));
+
+            // 获取到合并后的数据
+            List<CartInfo> cartInfoLoginList = boundHashOperations.values();
+            // 排序
+            if (!CollectionUtils.isEmpty(cartInfoLoginList)){
+                cartInfoLoginList.sort((o1, o2) -> {
+                    return DateUtil.truncatedCompareTo(o2.getUpdateTime(),o1.getUpdateTime(),Calendar.SECOND);
+                });
+            }
+
+            // 返回登录之后的数据
+            return cartInfoLoginList;
+        }
+
+        //返回购物车集合
+        return new ArrayList<>();
     }
 
     private String getCartKey(String userId) {
