@@ -6,10 +6,7 @@ import com.atguigu.gmall.common.util.AuthContextHolder;
 import com.atguigu.gmall.model.cart.CartInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -67,6 +64,20 @@ public class CartApiController {
         }
 
         this.cartService.checkCart(skuId,isChecked,userId);
+
+        return Result.ok();
+    }
+
+    //删除购物车购物项
+    @DeleteMapping("deleteCart/{skuId}"))
+    public Result deleteCart(@PathVariable Long skuId,HttpServletRequest request){
+
+        String userId = AuthContextHolder.getUserId(request);
+        if (StringUtils.isEmpty(userId)){
+            userId  = AuthContextHolder.getUserTempId(request);
+        }
+
+        this.cartService.deleteCart(skuId,userId);
 
         return Result.ok();
     }

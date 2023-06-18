@@ -193,6 +193,16 @@ public class CartServiceImpl implements CartService {
         }
     }
 
+    @Override
+    public void deleteCart(Long skuId, String userId) {
+        String cartKey = this.getCartKey(userId);
+        // redis判断是否存在
+        Boolean result = this.redisTemplate.boundHashOps(cartKey).hasKey(skuId.toString());
+        if (result){
+            this.redisTemplate.boundHashOps(cartKey).delete(skuId.toString());
+        }
+    }
+
     private String getCartKey(String userId) {
         String cartKey = RedisConst.USER_KEY_PREFIX+ userId +RedisConst.USER_CART_KEY_SUFFIX;
         return cartKey;

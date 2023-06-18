@@ -29,4 +29,11 @@ public interface CartService {
      * @param userId
      */
     void checkCart(Long skuId, Integer isChecked, String userId);
+
+    /**
+     * 删除购物车
+     * @param skuId
+     * @param userId
+     */
+    void deleteCart(Long skuId, String userId);
 }
