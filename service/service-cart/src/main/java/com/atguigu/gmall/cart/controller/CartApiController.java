@@ -69,7 +69,7 @@ public class CartApiController {
     }
 
     //删除购物车购物项
-    @DeleteMapping("deleteCart/{skuId}"))
+    @DeleteMapping("deleteCart/{skuId}")
     public Result deleteCart(@PathVariable Long skuId,HttpServletRequest request){
 
         String userId = AuthContextHolder.getUserId(request);
