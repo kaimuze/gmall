@@ -2,6 +2,7 @@ package com.atguigu.gmall.cart.service.impl;
 
 import com.atguigu.gmall.cart.service.CartService;
 import com.atguigu.gmall.common.constant.RedisConst;
+import com.atguigu.gmall.common.util.DateUtil;
 import com.atguigu.gmall.model.cart.CartInfo;
 import com.atguigu.gmall.model.product.SkuInfo;
 import com.atguigu.gmall.product.client.ProductFeignClient;
@@ -9,8 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @ClassName: CartServiceImpl
@@ -87,6 +93,36 @@ public class CartServiceImpl implements CartService {
         //放入缓存
         this.redisTemplate.opsForHash().put(cartKey,skuId.toString(),cartInfoExist);
 
+    }
+
+    @Override
+    public List<CartInfo> getCartList(String userId, String userTempId) {
+
+        //声明购物车集合数据对象
+        List<CartInfo> cartInfoList = new ArrayList<>();
+
+        // 判断当前用户id 是否是登录状态
+        if (!StringUtils.isEmpty(userId)){
+            //登录了
+            String cartKey = this.getCartKey(userId);
+            //获取登录的购物车数据
+            cartInfoList = this.redisTemplate.opsForHash().values(cartKey);
+        }
+
+        if (!StringUtils.isEmpty(userTempId)){
+            //获取未登录购物车集合数据
+            String cartKey = this.getCartKey(userTempId);
+            cartInfoList = this.redisTemplate.opsForHash().values(cartKey);
+        }
+
+        // 查询之后 排序购物项  按照修改时间进行排序
+        if (!CollectionUtils.isEmpty(cartInfoList)){
+            cartInfoList.sort( (o1, o2) -> {
+                return DateUtil.truncatedCompareTo(o2.getUpdateTime(), o1.getUpdateTime(), Calendar.SECOND);
+            });
+        }
+
+        return cartInfoList;
     }
 
     private String getCartKey(String userId) {
