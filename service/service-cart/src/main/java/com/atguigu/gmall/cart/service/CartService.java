@@ -21,4 +21,12 @@ public interface CartService {
      * @return
      */
     List<CartInfo> getCartList(String userId, String userTempId);
+
+    /**
+     * 修改选中状态
+     * @param skuId
+     * @param isCheckd
+     * @param userId
+     */
+    void checkCart(Long skuId, Integer isChecked, String userId);
 }

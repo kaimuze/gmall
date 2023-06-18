@@ -180,6 +180,19 @@ public class CartServiceImpl implements CartService {
         return new ArrayList<>();
     }
 
+    @Override
+    public void checkCart(Long skuId, Integer isChecked, String userId) {
+        // 获取缓存key
+        String cartKey = this.getCartKey(userId);
+        CartInfo cartInfo = (CartInfo) this.redisTemplate.boundHashOps(cartKey).get(skuId.toString());
+        //等价于
+//        this.redisTemplate.opsForHash().get(cartKey,skuId.toString());
+        if (cartInfo != null) {
+            cartInfo.setIsChecked(isChecked);
+            this.redisTemplate.boundHashOps(cartKey).put(skuId.toString(),cartInfo);
+        }
+    }
+
     private String getCartKey(String userId) {
         String cartKey = RedisConst.USER_KEY_PREFIX+ userId +RedisConst.USER_CART_KEY_SUFFIX;
         return cartKey;
