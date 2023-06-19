@@ -12,6 +12,7 @@ import com.atguigu.gmall.model.user.UserAddress;
 import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.atguigu.gmall.user.client.UserFeignClient;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -19,8 +20,11 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -51,6 +55,9 @@ public class OrderApiController {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private ThreadPoolExecutor threadPoolExecutor;
 
     //结算
     @GetMapping("auth/trade")
@@ -91,7 +98,7 @@ public class OrderApiController {
         //-----------------------------测试方法用------------------------------------------
         // totalNum 总件数
         int sum = cartCheckedList.stream().mapToInt(CartInfo::getSkuNum).sum();
-        System.out.println("********+++++++++@@@@@@@@@@@@@@#############" + sum);
+        System.out.println("********+++++++++$$$$$$$$$$$$$$#############" + sum);
         System.out.println("********+++++++++@@@@@@@@@@@@@@#############" + totalNum);
         //-----------------------------------------------------------------------
 
@@ -134,34 +141,54 @@ public class OrderApiController {
         //删除缓存流水号
         this.orderService.delTradeNo(userId);
 
+        // 异步编排: runAsync或supplyAsync 静态方法 多线程并行优化
+        //创建集合存放每一个线程对象
+        ArrayList<CompletableFuture> completableFutureArrayList = new ArrayList<>();
+        //存放返回值为错误信息集合
+        ArrayList<String> errorList = new ArrayList<>();
 
         // 下订单前验证库存
         List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
         for (OrderDetail orderDetail : orderDetailList) {
-            //验证库存
-            Boolean exist = this.orderService.checkStock(orderDetail.getSkuId(), orderDetail.getSkuNum());
-            if (!exist) {
-                //库存失败,没有足够库存
-                return Result.fail().message(orderDetail.getSkuName() + "库存不足,请重新下单");
-            }
 
-            //验证价格  订单价格与实时价格作比较
-            BigDecimal orderPrice = orderDetail.getOrderPrice();
-            BigDecimal skuPrice = this.productFeignClient.getskuPrice(orderDetail.getSkuId());
-            //比较
-            if (orderPrice.compareTo(skuPrice) != 0) {
+            CompletableFuture<Void> stockCompletableFuture = CompletableFuture.runAsync(() -> {
+                //验证库存
+                Boolean exist = this.orderService.checkStock(orderDetail.getSkuId(), orderDetail.getSkuNum());
+                if (!exist) {
+                    //库存失败,没有足够库存
+                    // 记录错误信息
+                    errorList.add(orderDetail.getSkuName() + "库存不足,请重新下单");
+                }
+            },threadPoolExecutor);
+            completableFutureArrayList.add(stockCompletableFuture);
 
-                //价格变动后,修改用户购物车内商品的价格更新同步
-                String catrtKey = RedisConst.USER_KEY_PREFIX + userId + RedisConst.USER_CART_KEY_SUFFIX;
-                CartInfo cartInfo = (CartInfo) this.redisTemplate.opsForHash().get(catrtKey, orderDetail.getSkuId().toString());
-                cartInfo.setSkuPrice(skuPrice);
-                this.redisTemplate.opsForHash().put(catrtKey,orderDetail.getSkuId().toString(),cartInfo);
+            CompletableFuture<Void> checkPriceCompletableFuture = CompletableFuture.runAsync(() -> {
+                //验证价格  订单价格与实时价格作比较
+                BigDecimal orderPrice = orderDetail.getOrderPrice();
+                BigDecimal skuPrice = this.productFeignClient.getskuPrice(orderDetail.getSkuId());
+                //比较
+                if (orderPrice.compareTo(skuPrice) != 0) {
 
-                // 还可以开发涨价还是降价,并分别是多少$
+                    //价格变动后,修改用户购物车内商品的价格更新同步
+                    String catrtKey = RedisConst.USER_KEY_PREFIX + userId + RedisConst.USER_CART_KEY_SUFFIX;
+                    CartInfo cartInfo = (CartInfo) this.redisTemplate.opsForHash().get(catrtKey, orderDetail.getSkuId().toString());
+                    cartInfo.setSkuPrice(skuPrice);
+                    this.redisTemplate.opsForHash().put(catrtKey, orderDetail.getSkuId().toString(), cartInfo);
 
-                //!=0说明价格有变动
-                return Result.fail().message(orderDetail.getSkuName() + "价格有变动");
-            }
+                    // 还可以开发涨价还是降价,并分别是多少$
+
+                    //!=0说明价格有变动
+                    errorList.add(orderDetail.getSkuName() + "价格有变动");
+                }
+            },threadPoolExecutor);
+            completableFutureArrayList.add(checkPriceCompletableFuture);
+        }
+
+        // 线程结果集组合
+        CompletableFuture.allOf(completableFutureArrayList.toArray(new CompletableFuture[completableFutureArrayList.size()])).join();
+        // 线程执行后,判断是否报错
+        if (errorList.size()>0){
+            return Result.fail().message(StringUtils.join(errorList, ","));
         }
 
         //调用服务下订单
