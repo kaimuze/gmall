@@ -12,6 +12,8 @@ import com.atguigu.gmall.model.user.UserAddress;
 import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.atguigu.gmall.user.client.UserFeignClient;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -195,6 +197,24 @@ public class OrderApiController {
         Long orderId = this.orderService.saveOrderInfo(orderInfo);
         return Result.ok(orderId);
     }
+
+
+    // /api/order/auth/{page}/{limit}   web-all异步调用
+    //获取我的订单数据 分页查询
+    @GetMapping("/auth/{page}/{limit}")
+    public Result getOrderPageList(@PathVariable Long page,@PathVariable Long limit,HttpServletRequest request){
+
+        // 我的订单 获取userId
+        String userId = AuthContextHolder.getUserId(request);
+
+        //分页插件
+        Page<OrderInfo> pageModel = new Page<>(page,limit);
+        IPage<OrderInfo> iPage = this.orderService.getOrderInfoPage(pageModel,userId);
+
+        return Result.ok(iPage);
+
+    }
+
 
 
 }

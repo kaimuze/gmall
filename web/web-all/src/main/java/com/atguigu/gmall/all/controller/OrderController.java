@@ -35,5 +35,9 @@ public class OrderController {
     }
 
 
+    @GetMapping("myOrder.html")
+    public String myOrder(Model model){
+        return "/order/myOrder";
+    }
 
 }

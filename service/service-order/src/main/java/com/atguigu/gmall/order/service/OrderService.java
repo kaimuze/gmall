@@ -1,6 +1,8 @@
 package com.atguigu.gmall.order.service;
 
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 
 /**
@@ -42,4 +44,12 @@ public interface OrderService {
      * @return
      */
     Boolean checkStock(Long skuId, Integer skuNum);
+
+    /**
+     * 获取我的订单列表数据
+     * @param pageModel
+     * @param userId
+     * @return
+     */
+    IPage<OrderInfo> getOrderInfoPage(Page<OrderInfo> pageModel, String userId);
 }

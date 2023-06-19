@@ -8,6 +8,8 @@ import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -123,5 +125,21 @@ public class OrderServiceImpl implements OrderService {
         String result = HttpClientUtil.doGet(wareUrl + "/hasStock?skuId=" + skuId + "&num=" + skuNum);
         // 1有 0没有
         return "1".equals(result);
+    }
+
+    @Override
+    public IPage<OrderInfo> getOrderInfoPage(Page<OrderInfo> pageModel, String userId) {
+//        方式一: 关联查询 select * from order_info oi inner join order_detail od on od.order_id = oi.id where user_id = 1;
+//        方式二: 使用mapper 单独查询
+        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderInfoPageList(pageModel,userId);
+        // 给数据库中不存在的字段赋值 orderStatusName
+        List<OrderInfo> records = orderInfoIPage.getRecords();
+        records.forEach(orderInfo -> {
+            // 枚举类中根据中文获取状态方法
+            String orderStatus = OrderStatus.getStatusNameByStatus(orderInfo.getOrderStatus());
+            orderInfo.setOrderStatusName(orderStatus);
+        });
+
+        return orderInfoIPage;
     }
 }
