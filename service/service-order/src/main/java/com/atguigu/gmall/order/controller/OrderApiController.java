@@ -7,13 +7,12 @@ import com.atguigu.gmall.model.cart.CartInfo;
 import com.atguigu.gmall.model.order.OrderDetail;
 import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.model.user.UserAddress;
+import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.atguigu.gmall.user.client.UserFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
@@ -42,6 +41,9 @@ public class OrderApiController {
     @Qualifier("com.atguigu.gmall.product.client.ProductFeignClient")
     @Autowired
     private ProductFeignClient productFeignClient;
+
+    @Autowired
+    private OrderService orderService;
 
     //结算
     @GetMapping("auth/trade")
@@ -102,5 +104,18 @@ public class OrderApiController {
 
         return Result.ok(hashMap);
     }
+
+    // 保存/提交 订单数据
+    // http://api.gmall.com/api/order/auth/submitOrder?tradeNo=null
+    @PostMapping("/auth/submitOrder")
+    public Result submitOrder(@RequestBody OrderInfo orderInfo,HttpServletRequest request){
+
+        String userId = AuthContextHolder.getUserId(request);
+        orderInfo.setUserId(Long.parseLong(userId));
+        Long orderId = this.orderService.saveOrderInfo(orderInfo);
+
+        return Result.ok(orderId);
+    }
+
 
 }
