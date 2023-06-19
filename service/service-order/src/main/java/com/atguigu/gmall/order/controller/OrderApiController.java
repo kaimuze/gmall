@@ -1,0 +1,106 @@
+package com.atguigu.gmall.order.controller;
+
+import com.atguigu.gmall.cart.client.ServiceCartFeignClient;
+import com.atguigu.gmall.common.result.Result;
+import com.atguigu.gmall.common.util.AuthContextHolder;
+import com.atguigu.gmall.model.cart.CartInfo;
+import com.atguigu.gmall.model.order.OrderDetail;
+import com.atguigu.gmall.model.order.OrderInfo;
+import com.atguigu.gmall.model.user.UserAddress;
+import com.atguigu.gmall.product.client.ProductFeignClient;
+import com.atguigu.gmall.user.client.UserFeignClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+/**
+ * @ClassName: OrderController
+ * @author: javaermamba
+ * @date: 2023-06-2023/6/19-11:05
+ * @Description:
+ */
+@RestController
+@RequestMapping("/api/order")
+public class OrderApiController {
+
+    @Qualifier("com.atguigu.gmall.cart.client.ServiceCartFeignClient")
+    @Autowired
+    private ServiceCartFeignClient serviceCartFeignClient;
+
+    @Qualifier("com.atguigu.gmall.user.client.UserFeignClient")
+    @Autowired
+    private UserFeignClient userFeignClient;
+
+    @Qualifier("com.atguigu.gmall.product.client.ProductFeignClient")
+    @Autowired
+    private ProductFeignClient productFeignClient;
+
+    //结算
+    @GetMapping("auth/trade")
+    public Result authTrade(HttpServletRequest request){
+
+        String userId = AuthContextHolder.getUserId(request);
+        //收货地址列表
+        List<UserAddress> userAddressList = userFeignClient.findUserAddressListByUserId(Long.parseLong(userId));
+
+        //送货清单
+        List<CartInfo> cartCheckedList = this.serviceCartFeignClient.getCartCheckedList(Long.parseLong(userId));
+        // CartInfo => OrderDetail
+        AtomicInteger totalNum = new AtomicInteger();
+        List<OrderDetail> orderDetailList = cartCheckedList.stream().map(cartInfo -> {
+            OrderDetail orderDetail = new OrderDetail();
+            // 页面没有渲染skuId但是要给到,以备使用
+            orderDetail.setSkuId(cartInfo.getSkuId());
+            orderDetail.setImgUrl(cartInfo.getImgUrl());
+            orderDetail.setSkuNum(cartInfo.getSkuNum());
+            orderDetail.setSkuName(cartInfo.getSkuName());
+            // cartInfo.getSkuPrice()加入购物车价格    cartInfo.getSkuPrice()实时价格
+            orderDetail.setOrderPrice(cartInfo.getSkuPrice());
+
+            // 计算总件数
+            totalNum.addAndGet(cartInfo.getSkuNum());
+
+
+            return orderDetail;
+        }).collect(Collectors.toList());
+
+        // 商品总金额
+        OrderInfo orderInfo = new OrderInfo();
+        //赋值订单明细结果
+        orderInfo.setOrderDetailList(orderDetailList);
+        orderInfo.sumTotalAmount();
+
+
+        //-----------------------------测试方法用------------------------------------------
+        // totalNum 总件数
+        int sum = cartCheckedList.stream().mapToInt(CartInfo::getSkuNum).sum();
+        System.out.println("********+++++++++@@@@@@@@@@@@@@#############"+sum);
+        System.out.println("********+++++++++@@@@@@@@@@@@@@#############"+totalNum);
+        //-----------------------------------------------------------------------
+
+
+        // 计算总金额totalAmount   这里涉及到敏感信息,需要重新计算,不能直接使用页面的数值
+        // 计算总金额 = 单价 * 数量
+
+
+
+        // 根据页面结合map的封装
+        HashMap<String, Object> hashMap = new HashMap<>();
+
+        hashMap.put("userAddressList",userAddressList);
+        hashMap.put("detailArrayList",orderDetailList);
+        hashMap.put("totalNum",totalNum);
+        hashMap.put("totalAmount",orderInfo.getTotalAmount());
+
+        return Result.ok(hashMap);
+    }
+
+}
