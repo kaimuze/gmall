@@ -2,6 +2,7 @@ package com.atguigu.gmall.user.client.impl;
 
 import com.atguigu.gmall.model.user.UserAddress;
 import com.atguigu.gmall.user.client.UserFeignClient;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -11,7 +12,7 @@ import java.util.List;
  * @date: 2023-06-2023/6/19-9:47
  * @Description:
  */
-
+@Component
 public class UserDegradeFeignClientImpl implements UserFeignClient {
 
     @Override

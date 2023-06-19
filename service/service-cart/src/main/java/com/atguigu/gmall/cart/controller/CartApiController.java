@@ -82,5 +82,14 @@ public class CartApiController {
         return Result.ok();
     }
 
+    //购物车详情页面,获取购物车选中状态购物项
+    // /api/cart/getCartCheckedList/{userId}
+    @GetMapping("getCartCheckedList/{userId}")
+    public List<CartInfo> getCartCheckedList(@PathVariable Long userId){
+
+        return this.cartService.getCartCheckedList(userId);
+
+    }
+
 
 }

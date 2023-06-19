@@ -1,5 +1,6 @@
 package com.atguigu.gmall.cart.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.atguigu.gmall.cart.service.CartService;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.common.util.DateUtil;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @ClassName: CartServiceImpl
@@ -201,6 +203,16 @@ public class CartServiceImpl implements CartService {
         if (result){
             this.redisTemplate.boundHashOps(cartKey).delete(skuId.toString());
         }
+    }
+
+    @Override
+    public List<CartInfo> getCartCheckedList(Long userId) {
+        String cartKey = this.getCartKey(userId.toString());
+//        List values1 = this.redisTemplate.opsForHash().values(cartKey);
+        List<CartInfo> cartInfoList = this.redisTemplate.boundHashOps(cartKey).values();
+        List<CartInfo> infoList = cartInfoList.stream().filter(cartInfo -> cartInfo.getIsChecked() == 1)
+                .collect(Collectors.toList());
+        return infoList;
     }
 
     private String getCartKey(String userId) {
