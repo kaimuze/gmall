@@ -120,7 +120,7 @@ public class OrderServiceImpl implements OrderService {
     public Boolean checkStock(Long skuId, Integer skuNum) {
         //ware:
         //  url: http://localhost:9001   HttpClient调用
-        String result = HttpClientUtil.doGet(wareUrl + "/hasStock?skuid=" + skuId + "&num=" + skuNum);
+        String result = HttpClientUtil.doGet(wareUrl + "/hasStock?skuId=" + skuId + "&num=" + skuNum);
         // 1有 0没有
         return "1".equals(result);
     }

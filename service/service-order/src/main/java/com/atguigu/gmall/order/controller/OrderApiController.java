@@ -1,20 +1,24 @@
 package com.atguigu.gmall.order.controller;
 
 import com.atguigu.gmall.cart.client.ServiceCartFeignClient;
+import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.common.util.AuthContextHolder;
 import com.atguigu.gmall.model.cart.CartInfo;
 import com.atguigu.gmall.model.order.OrderDetail;
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.atguigu.gmall.model.product.SkuInfo;
 import com.atguigu.gmall.model.user.UserAddress;
 import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.product.client.ProductFeignClient;
 import com.atguigu.gmall.user.client.UserFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,9 +49,12 @@ public class OrderApiController {
     @Autowired
     private OrderService orderService;
 
+    @Autowired
+    private RedisTemplate redisTemplate;
+
     //结算
     @GetMapping("auth/trade")
-    public Result authTrade(HttpServletRequest request){
+    public Result authTrade(HttpServletRequest request) {
 
         String userId = AuthContextHolder.getUserId(request);
         //收货地址列表
@@ -84,8 +91,8 @@ public class OrderApiController {
         //-----------------------------测试方法用------------------------------------------
         // totalNum 总件数
         int sum = cartCheckedList.stream().mapToInt(CartInfo::getSkuNum).sum();
-        System.out.println("********+++++++++@@@@@@@@@@@@@@#############"+sum);
-        System.out.println("********+++++++++@@@@@@@@@@@@@@#############"+totalNum);
+        System.out.println("********+++++++++@@@@@@@@@@@@@@#############" + sum);
+        System.out.println("********+++++++++@@@@@@@@@@@@@@#############" + totalNum);
         //-----------------------------------------------------------------------
 
 
@@ -93,18 +100,17 @@ public class OrderApiController {
         // 计算总金额 = 单价 * 数量
 
 
-
         // 根据页面结合map的封装
         HashMap<String, Object> hashMap = new HashMap<>();
 
-        hashMap.put("userAddressList",userAddressList);
-        hashMap.put("detailArrayList",orderDetailList);
-        hashMap.put("totalNum",totalNum);
-        hashMap.put("totalAmount",orderInfo.getTotalAmount());
+        hashMap.put("userAddressList", userAddressList);
+        hashMap.put("detailArrayList", orderDetailList);
+        hashMap.put("totalNum", totalNum);
+        hashMap.put("totalAmount", orderInfo.getTotalAmount());
 
         //页面存储流水号,防止提交和保存订单数据时,重复提交订单数据,后台有判断
         String tradeNo = this.orderService.getTradeNo(userId);
-        hashMap.put("tradeNo",tradeNo);
+        hashMap.put("tradeNo", tradeNo);
 
         return Result.ok(hashMap);
     }
@@ -112,7 +118,7 @@ public class OrderApiController {
     // 保存/提交 订单数据
     // http://api.gmall.com/api/order/auth/submitOrder?tradeNo=null
     @PostMapping("/auth/submitOrder")
-    public Result submitOrder(@RequestBody OrderInfo orderInfo,HttpServletRequest request){
+    public Result submitOrder(@RequestBody OrderInfo orderInfo, HttpServletRequest request) {
 
         String userId = AuthContextHolder.getUserId(request);
         orderInfo.setUserId(Long.parseLong(userId));
@@ -133,10 +139,28 @@ public class OrderApiController {
         List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
         for (OrderDetail orderDetail : orderDetailList) {
             //验证库存
-            Boolean exist =this.orderService.checkStock(orderDetail.getSkuId(),orderDetail.getSkuNum());
-            if (!exist){
+            Boolean exist = this.orderService.checkStock(orderDetail.getSkuId(), orderDetail.getSkuNum());
+            if (!exist) {
                 //库存失败,没有足够库存
                 return Result.fail().message(orderDetail.getSkuName() + "库存不足,请重新下单");
+            }
+
+            //验证价格  订单价格与实时价格作比较
+            BigDecimal orderPrice = orderDetail.getOrderPrice();
+            BigDecimal skuPrice = this.productFeignClient.getskuPrice(orderDetail.getSkuId());
+            //比较
+            if (orderPrice.compareTo(skuPrice) != 0) {
+
+                //价格变动后,修改用户购物车内商品的价格更新同步
+                String catrtKey = RedisConst.USER_KEY_PREFIX + userId + RedisConst.USER_CART_KEY_SUFFIX;
+                CartInfo cartInfo = (CartInfo) this.redisTemplate.opsForHash().get(catrtKey, orderDetail.getSkuId().toString());
+                cartInfo.setSkuPrice(skuPrice);
+                this.redisTemplate.opsForHash().put(catrtKey,orderDetail.getSkuId().toString(),cartInfo);
+
+                // 还可以开发涨价还是降价,并分别是多少$
+
+                //!=0说明价格有变动
+                return Result.fail().message(orderDetail.getSkuName() + "价格有变动");
             }
         }
 
