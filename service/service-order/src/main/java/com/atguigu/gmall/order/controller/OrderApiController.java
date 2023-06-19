@@ -102,6 +102,10 @@ public class OrderApiController {
         hashMap.put("totalNum",totalNum);
         hashMap.put("totalAmount",orderInfo.getTotalAmount());
 
+        //页面存储流水号,防止提交和保存订单数据时,重复提交订单数据,后台有判断
+        String tradeNo = this.orderService.getTradeNo(userId);
+        hashMap.put("tradeNo",tradeNo);
+
         return Result.ok(hashMap);
     }
 
@@ -112,8 +116,19 @@ public class OrderApiController {
 
         String userId = AuthContextHolder.getUserId(request);
         orderInfo.setUserId(Long.parseLong(userId));
-        Long orderId = this.orderService.saveOrderInfo(orderInfo);
 
+        //获取页面提交订单的订单号参数,这个参数为了防止重复提交订单而定义的.
+        String tradeNo = request.getParameter("tradeNo");
+        //点击提交时,已将流水号存入缓存,这里正是为了防止用户再次刷新页面重新提交,调用比较方法,与缓存中的流水号作比较
+        Boolean result = this.orderService.checkTradeNo(userId, tradeNo);
+        if (!result) {
+            //不能提交訂單,并給信息提示
+            return Result.fail().message("不能重复提交订单数据");
+        }
+        //删除缓存流水号
+        this.orderService.delTradeNo(userId);
+
+        Long orderId = this.orderService.saveOrderInfo(orderInfo);
         return Result.ok(orderId);
     }
 

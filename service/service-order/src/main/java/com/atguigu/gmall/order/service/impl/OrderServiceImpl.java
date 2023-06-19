@@ -8,13 +8,11 @@ import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 /**
  * @ClassName: OrderServiceImpl
@@ -30,6 +28,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderDetailMapper orderDetailMapMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -76,5 +77,37 @@ public class OrderServiceImpl implements OrderService {
         });
 
         return orderInfo.getId();
+    }
+
+    @Override
+    public String getTradeNo(String userId) {
+        String tradeNo = UUID.randomUUID().toString();
+
+        String tradeNoKey = "tradeNo:" + userId;
+        this.redisTemplate.opsForValue().set(tradeNoKey,tradeNo);
+
+        return tradeNo;
+    }
+
+    /**
+     *
+     * @param userId 组成缓存key
+     * @param tradeNo 前端传递过来的流水号
+     * @return
+     */
+    @Override
+    public Boolean checkTradeNo(String userId, String tradeNo) {
+        String tradeNoKey  = "tradeNo:" + userId;
+
+        // 获取缓存中的数据
+        String tradeNoRedis = (String) this.redisTemplate.opsForValue().get(tradeNoKey);
+        //返回比较结果
+        return tradeNo.equals(tradeNoRedis);
+    }
+
+    @Override
+    public void delTradeNo(String userId) {
+        String tradeNoKey  = "tradeNo:" + userId;
+        this.redisTemplate.delete(tradeNoKey);
     }
 }
