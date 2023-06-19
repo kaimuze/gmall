@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.service.impl;
 
+import com.atguigu.gmall.common.util.HttpClientUtil;
 import com.atguigu.gmall.model.enums.OrderStatus;
 import com.atguigu.gmall.model.enums.ProcessStatus;
 import com.atguigu.gmall.model.order.OrderDetail;
@@ -8,6 +9,7 @@ import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Value("${ware.url}")
+    private String wareUrl;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -60,7 +65,7 @@ public class OrderServiceImpl implements OrderService {
         //过期时间 每个商品对应的订单过期时间可能不同  这里统一一天
         Calendar instance = Calendar.getInstance();
         //当前系统时间+1天
-        instance.add(Calendar.DATE,1);
+        instance.add(Calendar.DATE, 1);
         orderInfo.setExpireTime(instance.getTime());
 
         //订单状态
@@ -84,20 +89,19 @@ public class OrderServiceImpl implements OrderService {
         String tradeNo = UUID.randomUUID().toString();
 
         String tradeNoKey = "tradeNo:" + userId;
-        this.redisTemplate.opsForValue().set(tradeNoKey,tradeNo);
+        this.redisTemplate.opsForValue().set(tradeNoKey, tradeNo);
 
         return tradeNo;
     }
 
     /**
-     *
-     * @param userId 组成缓存key
+     * @param userId  组成缓存key
      * @param tradeNo 前端传递过来的流水号
      * @return
      */
     @Override
     public Boolean checkTradeNo(String userId, String tradeNo) {
-        String tradeNoKey  = "tradeNo:" + userId;
+        String tradeNoKey = "tradeNo:" + userId;
 
         // 获取缓存中的数据
         String tradeNoRedis = (String) this.redisTemplate.opsForValue().get(tradeNoKey);
@@ -107,7 +111,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void delTradeNo(String userId) {
-        String tradeNoKey  = "tradeNo:" + userId;
+        String tradeNoKey = "tradeNo:" + userId;
         this.redisTemplate.delete(tradeNoKey);
+    }
+
+    // 远程调用库粗系统 http://localhost:9001/hasStock?skuid=1022&num=2  库存系统SpringBoot框架,无法使用feign调用,使用HttpClient调用
+    @Override
+    public Boolean checkStock(Long skuId, Integer skuNum) {
+        //ware:
+        //  url: http://localhost:9001   HttpClient调用
+        String result = HttpClientUtil.doGet(wareUrl + "/hasStock?skuid=" + skuId + "&num=" + skuNum);
+        // 1有 0没有
+        return "1".equals(result);
     }
 }

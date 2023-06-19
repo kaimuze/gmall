@@ -31,7 +31,7 @@ public class OrderController {
         Map<String, Object> data = result.getData();
         model.addAllAttributes(data);
 
-        return "order/trade.html";
+        return "order/trade";
     }
 
 

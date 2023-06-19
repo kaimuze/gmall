@@ -128,6 +128,19 @@ public class OrderApiController {
         //删除缓存流水号
         this.orderService.delTradeNo(userId);
 
+
+        // 下订单前验证库存
+        List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
+        for (OrderDetail orderDetail : orderDetailList) {
+            //验证库存
+            Boolean exist =this.orderService.checkStock(orderDetail.getSkuId(),orderDetail.getSkuNum());
+            if (!exist){
+                //库存失败,没有足够库存
+                return Result.fail().message(orderDetail.getSkuName() + "库存不足,请重新下单");
+            }
+        }
+
+        //调用服务下订单
         Long orderId = this.orderService.saveOrderInfo(orderInfo);
         return Result.ok(orderId);
     }
