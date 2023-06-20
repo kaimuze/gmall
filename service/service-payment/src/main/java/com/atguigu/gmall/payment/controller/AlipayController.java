@@ -10,6 +10,7 @@ import com.atguigu.gmall.payment.service.AlipayService;
 import com.atguigu.gmall.payment.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +28,8 @@ import java.util.concurrent.TimeUnit;
  * @Date: 2023-2023/6/20-19:19
  * @Description:
  */
+// 修改nacos配置文件重新发布 无需重启注解
+@RefreshScope
 @Controller
 @RequestMapping("/api/payment/alipay")
 public class AlipayController {
