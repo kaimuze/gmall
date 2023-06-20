@@ -40,9 +40,9 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentInfo paymentInfo = new PaymentInfo();
         paymentInfo.setOutTradeNo(orderInfo.getOutTradeNo());
         paymentInfo.setOrderId(orderInfo.getId());
-//        paymentInfo.setUserId();控制器赋值
+        paymentInfo.setUserId(orderInfo.getUserId());
         paymentInfo.setPaymentStatus(PaymentStatus.UNPAID.name());
-        paymentInfo.setPaymentType(PaymentType.ALIPAY.name());
+        paymentInfo.setPaymentType(paymentType);
         paymentInfo.setTotalAmount(orderInfo.getTotalAmount());
         paymentInfo.setSubject(orderInfo.getTradeBody());
         // callback_time callback_content 异步回调时再给值
