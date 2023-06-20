@@ -7,8 +7,13 @@ import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.payment.mapper.PaymentInfoMapper;
 import com.atguigu.gmall.payment.service.PaymentService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.Map;
 
 /**
  * @ClassName: PaymentServiceImpl
@@ -23,6 +28,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Autowired
     private PaymentInfoMapper paymentInfoMapper;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     public void savePaymentInfo(OrderInfo orderInfo, String paymentType) {
@@ -48,4 +56,52 @@ public class PaymentServiceImpl implements PaymentService {
         // callback_time callback_content 异步回调时再给值
         this.paymentInfoMapper.insert(paymentInfo);
     }
+
+    // 根据outTradeNo  paymentType 获取交易记录状态
+    @Override
+    public PaymentInfo getPaymentInfo(String outTradeNo, String paymentType) {
+        QueryWrapper<PaymentInfo> paymentInfoQueryWrapper = new QueryWrapper<>();
+        paymentInfoQueryWrapper.eq("out_trade_no",outTradeNo);
+        paymentInfoQueryWrapper.eq("payment_type",paymentType);
+        PaymentInfo paymentInfo = paymentInfoMapper.selectOne(paymentInfoQueryWrapper);
+        if (paymentInfo!=null){
+            return paymentInfo;
+        }
+        return null;
+    }
+
+    // 支付成功,更新记录
+    @Override
+    public void paySuccess(String outTradeNo, String paymentType, Map<String, String> paramMap) {
+        // 先查询当前是否有对应的交易记录
+        PaymentInfo paymentInfoQuery = this.getPaymentInfo(outTradeNo, paymentType);
+        if (paymentInfoQuery== null){
+            return;
+        }
+        //更新数据
+        try {
+//            UpdateWrapper<PaymentInfo> paymentInfoUpdateWrapper = new UpdateWrapper<>();
+//            paymentInfoUpdateWrapper.eq("out_trade_no",outTradeNo);
+//            paymentInfoUpdateWrapper.eq("payment_type",paymentType);
+            PaymentInfo paymentInfo = new PaymentInfo();
+//        paymentInfo.setOutTradeNo(outTradeNo);
+//        paymentInfo.setPaymentType(paymentType);
+            //更新支付宝的交易号
+            paymentInfo.setTradeNo(paramMap.get("trade_no"));
+            paymentInfo.setCallbackTime(new Date());
+            paymentInfo.setCallbackContent(paramMap.toString());
+            paymentInfo.setPaymentStatus(PaymentStatus.PAID.name());
+            //this.paymentInfoMapper.update(paymentInfo,paymentInfoUpdateWrapper);
+
+        } catch (Exception e) {
+            // 由于网络抖动出现了异常....
+            // 这里捕获到异常,删除key ,以便与再一次验证请求过来,可以再次重新执行更新操作
+            this.redisTemplate.delete(paramMap.get("notify_id"));
+            e.printStackTrace();
+        }
+
+
+    }
+
+
 }
