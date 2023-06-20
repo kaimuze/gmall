@@ -1,6 +1,8 @@
 package com.atguigu.gmall.product.service.impl;
 
+import com.atguigu.gmall.common.constant.MqConst;
 import com.atguigu.gmall.common.constant.RedisConst;
+import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.model.product.SkuAttrValue;
 import com.atguigu.gmall.model.product.SkuImage;
 import com.atguigu.gmall.model.product.SkuInfo;
@@ -44,6 +46,9 @@ public class SkuManagerServiceImpl implements SkuManagerService {
 
     @Autowired
     private RedissonClient redissonClient;
+
+    @Autowired
+    private RabbitService rabbitService;
 
     @Override
     public void saveSkuInfo(SkuInfo skuInfo) {
@@ -91,6 +96,7 @@ public class SkuManagerServiceImpl implements SkuManagerService {
         return this.skuInfoMapper.selectPage(pageModel,skuInfoLambdaQueryWrapper);
     }
 
+    //后台管理系统的商品上架操作  优化:通过RabbitMQ与es的上下架关联,实现一键上架下架商品
     @Override
     public void onSale(Long skuId) {
         // is_sale = 1
@@ -98,6 +104,11 @@ public class SkuManagerServiceImpl implements SkuManagerService {
         skuInfo.setId(skuId);
         skuInfo.setIsSale(1);
         this.skuInfoMapper.updateById(skuInfo);
+
+        // 发送消息到队列给消费者
+        // 消息主体: 根据消费者的需求填写  list模块作为消费者,上架操作需要skuId
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_GOODS,MqConst.ROUTING_GOODS_UPPER,skuId);
+
     }
 
     @Override
@@ -107,5 +118,10 @@ public class SkuManagerServiceImpl implements SkuManagerService {
         skuInfo.setId(skuId);
         skuInfo.setIsSale(0);
         this.skuInfoMapper.updateById(skuInfo);
+
+        // 发送消息到队列给消费者
+        // 消息主体: 根据消费者的需求填写  list模块作为消费者,上架操作需要skuId
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_GOODS,MqConst.ROUTING_GOODS_LOWER,skuId);
+
     }
 }
