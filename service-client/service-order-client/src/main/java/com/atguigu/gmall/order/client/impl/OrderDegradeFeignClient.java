@@ -1,6 +1,7 @@
 package com.atguigu.gmall.order.client.impl;
 
 import com.atguigu.gmall.common.result.Result;
+import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.client.ServiceOrderFeignClient;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,11 @@ public class OrderDegradeFeignClient implements ServiceOrderFeignClient {
 
     @Override
     public Result<Map<String, Object>> authTrade() {
+        return null;
+    }
+
+    @Override
+    public OrderInfo getOrderInfo(Long orderId) {
         return null;
     }
 }

@@ -59,4 +59,11 @@ public interface OrderService extends IService<OrderInfo> {
      * @param orderId
      */
     void execExpireOrder(Long orderId);
+
+    /**
+     * 根据订单id获取订单集合数据
+     * @param orderId
+     * @return
+     */
+    OrderInfo getOrderInfo(Long orderId);
 }

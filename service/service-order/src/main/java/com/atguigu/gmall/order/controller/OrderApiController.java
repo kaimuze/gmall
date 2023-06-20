@@ -216,5 +216,16 @@ public class OrderApiController {
     }
 
 
+    /**
+     * 获取订单数据
+     * @param orderId
+     * @return
+     */
+    @GetMapping("inner/getOrderInfo/{orderId}")
+    public OrderInfo getOrderInfo(@PathVariable Long orderId){
+        return this.orderService.getOrderInfo(orderId);
+    }
+
+
 
 }

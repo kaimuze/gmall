@@ -161,6 +161,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
         this.updateOrderStatus(orderId,ProcessStatus.CLOSED);
     }
 
+    @Override
+    public OrderInfo getOrderInfo(Long orderId) {
+        OrderInfo orderInfo = this.orderInfoMapper.selectById(orderId);
+
+        if (orderInfo!=null){
+            LambdaQueryWrapper<OrderDetail> orderDetailLambdaQueryWrapper = new LambdaQueryWrapper<>();
+            orderDetailLambdaQueryWrapper.eq(OrderDetail::getOrderId,orderId);
+            List<OrderDetail> orderDetailList = this.orderDetailMapMapper.selectList(orderDetailLambdaQueryWrapper);
+            orderInfo.setOrderDetailList(orderDetailList);
+        }
+        return orderInfo;
+    }
+
     /**
      * 更新订单方法          // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
      * @param orderId
