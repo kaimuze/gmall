@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.atguigu.gmall.common.constant.MqConst;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.common.service.RabbitService;
@@ -17,11 +18,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.hazelcast.HazelcastHealthContributorAutoConfiguration;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @ClassName: OrderServiceImpl
@@ -187,5 +190,64 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
         orderInfo.setOrderStatus(processStatus.getOrderStatus().name());
         orderInfo.setProcessStatus(processStatus.name());
         this.orderInfoMapper.updateById(orderInfo);
+    }
+
+    @Override
+    public void sendOrderStatus(Long orderId) {
+        // 发送消息给库存系统 减库存
+        this.updateOrderStatus(orderId,ProcessStatus.NOTIFIED_WARE);
+        //发送消息参数 为库存系统所需JSON格式封装数据
+        String wareJson = initWareOrder(orderId);
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_WARE_STOCK,MqConst.ROUTING_WARE_STOCK,wareJson);
+    }
+
+    /**
+     * 封装库存消息所需参数
+     * @param orderId
+     * @return
+     */
+    private String initWareOrder(Long orderId) {
+        // JSON字符串是由orderInfo的部分字段组成
+        OrderInfo orderInfo = this.getOrderInfo(orderId);
+        // 将orderInfo -> map
+        Map map = this.initWareOrder(orderInfo);
+        return JSON.toJSONString(map);
+    }
+
+    /**
+     * 转换orderInfo -> map
+     * @param orderInfo
+     * @return
+     */
+    private Map initWareOrder(OrderInfo orderInfo) {
+        HashMap<String, Object> hashMap = new HashMap<>();
+        hashMap.put("orderId",orderInfo.getId());
+        hashMap.put("consignee",orderInfo.getConsignee());
+        hashMap.put("consigneeTel",orderInfo.getConsigneeTel());
+        hashMap.put("orderComment",orderInfo.getOrderComment());
+        hashMap.put("orderBody",orderInfo.getTradeBody());
+        hashMap.put("deliverAddress",orderInfo.getDeliveryAddress());
+        hashMap.put("paymentWay",2);
+        // 上面封装orderInfo的 下面 details明细
+        List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
+//        ArrayList<Map> maps = new ArrayList<>();
+//        orderDetailList.forEach(orderDetail -> {
+//            HashMap<String, Object> detailMap = new HashMap<>();
+//            detailMap.put("skuId",orderDetail.getSkuId());
+//            detailMap.put("skuNum",orderDetail.getSkuNum());
+//            detailMap.put("skuName",orderDetail.getSkuName());
+//            maps.add(detailMap);
+//        });
+
+        List<HashMap<String, Object>> detailListMap = orderDetailList.stream().map(orderDetail -> {
+            HashMap<String, Object> detailMap = new HashMap<>();
+            detailMap.put("skuId", orderDetail.getSkuId());
+            detailMap.put("skuNum", orderDetail.getSkuNum());
+            detailMap.put("skuName", orderDetail.getSkuName());
+            return detailMap;
+        }).collect(Collectors.toList());
+
+        hashMap.put("details",detailListMap);
+        return hashMap;
     }
 }

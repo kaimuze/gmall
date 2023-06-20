@@ -46,6 +46,7 @@ public class WareConsumer {
      * @param channel
      * @throws IOException
      */
+
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = MqConst.QUEUE_WARE_STOCK, durable = "true"),
             exchange = @Exchange(value = MqConst.EXCHANGE_DIRECT_WARE_STOCK, type = ExchangeTypes.DIRECT, durable = "true"),

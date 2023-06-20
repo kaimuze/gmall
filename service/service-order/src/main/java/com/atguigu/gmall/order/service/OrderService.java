@@ -74,4 +74,10 @@ public interface OrderService extends IService<OrderInfo> {
      * @param processStatus
      */
     void updateOrderStatus(Long orderId, ProcessStatus processStatus);
+
+    /**
+     * 根据订单号,查询订单信息,并封装通知减库存信息所需数据
+     * @param orderId
+     */
+    void sendOrderStatus(Long orderId);
 }
