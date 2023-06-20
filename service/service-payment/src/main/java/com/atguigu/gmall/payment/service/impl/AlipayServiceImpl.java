@@ -4,8 +4,12 @@ import com.alibaba.fastjson.JSONObject;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.AlipayClient;
 import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.alipay.api.request.AlipayTradeRefundRequest;
+import com.alipay.api.response.AlipayTradeRefundResponse;
+import com.atguigu.gmall.model.enums.PaymentStatus;
 import com.atguigu.gmall.model.enums.PaymentType;
 import com.atguigu.gmall.model.order.OrderInfo;
+import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.order.client.ServiceOrderFeignClient;
 import com.atguigu.gmall.payment.config.AlipayConfig;
 import com.atguigu.gmall.payment.service.AlipayService;
@@ -38,7 +42,6 @@ public class AlipayServiceImpl implements AlipayService {
 
     @Autowired
     private PaymentService paymentService;
-
 
 
     @Override
@@ -98,4 +101,41 @@ public class AlipayServiceImpl implements AlipayService {
 
         return alipayClient.pageExecute(alipayRequest).getBody();  //调用SDK生成表单
     }
+
+    @Override
+    public Boolean refund(Long orderId) {
+        //  获取订单对象。
+        OrderInfo orderInfo = this.serviceOrderFeignClient.getOrderInfo(orderId);
+        // AlipayClient alipayClient = new DefaultAlipayClient("https://openapi.alipay.com/gateway.do","app_id","your private_key","json","GBK","alipay_public_key","RSA2");
+        AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
+        JSONObject bizContent = new JSONObject();
+        bizContent.put("out_trade_no", orderInfo.getOutTradeNo());
+        bizContent.put("refund_amount", 0.01);
+        bizContent.put("out_request_no", "HZ01RF001");
+        //// 返回参数选项，按需传入
+        //JSONArray queryOptions = new JSONArray();
+        //queryOptions.add("refund_detail_item_list");
+        //bizContent.put("query_options", queryOptions);
+
+        request.setBizContent(bizContent.toString());
+        AlipayTradeRefundResponse response = null;
+        try {
+            response = alipayClient.execute(request);
+        } catch (AlipayApiException e) {
+            e.printStackTrace();
+        }
+        if (response.isSuccess()) {
+            System.out.println("调用成功");
+            //  在此更新交易记录状态.
+            PaymentInfo paymentInfo = new PaymentInfo();
+            paymentInfo.setPaymentStatus(PaymentStatus.CLOSED.name());
+            this.paymentService.updatePaymentInfo(orderInfo.getOutTradeNo(), PaymentType.ALIPAY.name(), paymentInfo);
+            return true;
+        } else {
+            System.out.println("调用失败");
+            return false;
+        }
+
+    }
 }
+

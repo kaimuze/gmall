@@ -8,6 +8,7 @@ import com.atguigu.gmall.payment.mapper.PaymentInfoMapper;
 import com.atguigu.gmall.payment.service.PaymentService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -37,11 +38,11 @@ public class PaymentServiceImpl implements PaymentService {
 
         //交易记录表 一个订单同一种支付方式,不能存在相同的数据,不允许.一个订单de订单id和支付类型不能有多条一样的
         LambdaQueryWrapper<PaymentInfo> paymentInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        paymentInfoLambdaQueryWrapper.eq(PaymentInfo::getOrderId,orderInfo.getId());
-        paymentInfoLambdaQueryWrapper.eq(PaymentInfo::getPaymentType,paymentType);
+        paymentInfoLambdaQueryWrapper.eq(PaymentInfo::getOrderId, orderInfo.getId());
+        paymentInfoLambdaQueryWrapper.eq(PaymentInfo::getPaymentType, paymentType);
         PaymentInfo paymentInfoQuery = this.paymentInfoMapper.selectOne(paymentInfoLambdaQueryWrapper);
         //如果有当前订单以及支付方式的记录,则返回,否则插入信息
-        if (paymentInfoQuery!=null) {
+        if (paymentInfoQuery != null) {
             return;
         }
 
@@ -61,10 +62,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentInfo getPaymentInfo(String outTradeNo, String paymentType) {
         QueryWrapper<PaymentInfo> paymentInfoQueryWrapper = new QueryWrapper<>();
-        paymentInfoQueryWrapper.eq("out_trade_no",outTradeNo);
-        paymentInfoQueryWrapper.eq("payment_type",paymentType);
+        paymentInfoQueryWrapper.eq("out_trade_no", outTradeNo);
+        paymentInfoQueryWrapper.eq("payment_type", paymentType);
         PaymentInfo paymentInfo = paymentInfoMapper.selectOne(paymentInfoQueryWrapper);
-        if (paymentInfo!=null){
+        if (paymentInfo != null) {
             return paymentInfo;
         }
         return null;
@@ -93,6 +94,9 @@ public class PaymentServiceImpl implements PaymentService {
             paymentInfo.setPaymentStatus(PaymentStatus.PAID.name());
             //this.paymentInfoMapper.update(paymentInfo,paymentInfoUpdateWrapper);
 
+            // 更新订单方法的抽离
+            this.updatePaymentInfo(outTradeNo,paymentType,paymentInfo);
+
         } catch (Exception e) {
             // 由于网络抖动出现了异常....
             // 这里捕获到异常,删除key ,以便与再一次验证请求过来,可以再次重新执行更新操作
@@ -100,7 +104,15 @@ public class PaymentServiceImpl implements PaymentService {
             e.printStackTrace();
         }
 
+    }
 
+    // 更新交易记录
+    @Override
+    public void updatePaymentInfo(String outTradeNo, String paymentType, PaymentInfo paymentInfo) {
+        UpdateWrapper<PaymentInfo> paymentInfoUpdateWrapper = new UpdateWrapper<>();
+        paymentInfoUpdateWrapper.eq("out_trade_no",outTradeNo);
+        paymentInfoUpdateWrapper.eq("payment_type",paymentType);
+        paymentInfoMapper.update(paymentInfo,paymentInfoUpdateWrapper);
     }
 
 

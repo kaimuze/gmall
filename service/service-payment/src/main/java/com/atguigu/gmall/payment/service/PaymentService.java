@@ -30,4 +30,12 @@ public interface PaymentService {
      * @param paramMap
      */
     void paySuccess(String outTradeNo, String name, Map<String, String> paramMap);
+
+    /**
+     * 更新交易记录
+     * @param outTradeNo
+     * @param paymentType
+     * @param paymentInfo
+     */
+    void updatePaymentInfo(String outTradeNo, String paymentType, PaymentInfo paymentInfo);
 }

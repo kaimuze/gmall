@@ -2,6 +2,7 @@ package com.atguigu.gmall.payment.controller;
 
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.internal.util.AlipaySignature;
+import com.atguigu.gmall.common.result.Result;
 import com.atguigu.gmall.model.enums.PaymentType;
 import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.payment.config.AlipayConfig;
@@ -138,5 +139,13 @@ public class AlipayController {
         return "";
     }
 
+    //退款接口
+    @GetMapping("")
+    @ResponseBody
+    public Boolean refund(@PathVariable Long orderId){
+
+        Boolean result = this.alipayService.refund(orderId);
+        return result;
+    }
 
 }
