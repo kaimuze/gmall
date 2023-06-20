@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.hazelcast.HazelcastHealthContributorAutoConfiguration;
@@ -33,7 +34,7 @@ import java.util.stream.Collectors;
  * @Description:
  */
 @Service
-public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> implements OrderService {
+public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo> implements OrderService {
 
     @Autowired
     private OrderInfoMapper orderInfoMapper;
@@ -95,7 +96,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
         });
 
         // 下单保存订单消息时,发送延迟消息.到期不付款处理
-        this.rabbitService.sendDelayMsg(MqConst.EXCHANGE_DIRECT_ORDER_CANCEL,MqConst.ROUTING_ORDER_CANCEL,orderInfo.getId(),MqConst.DELAY_TIME);
+        this.rabbitService.sendDelayMsg(MqConst.EXCHANGE_DIRECT_ORDER_CANCEL, MqConst.ROUTING_ORDER_CANCEL, orderInfo.getId(), MqConst.DELAY_TIME);
 
         return orderInfo.getId();
     }
@@ -145,7 +146,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
     public IPage<OrderInfo> getOrderInfoPage(Page<OrderInfo> pageModel, String userId) {
 //        方式一: 关联查询 select * from order_info oi inner join order_detail od on od.order_id = oi.id where user_id = 1;
 //        方式二: 使用mapper 单独查询
-        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderInfoPageList(pageModel,userId);
+        IPage<OrderInfo> orderInfoIPage = orderInfoMapper.selectOrderInfoPageList(pageModel, userId);
         // 给数据库中不存在的字段赋值 orderStatusName
         List<OrderInfo> records = orderInfoIPage.getRecords();
         records.forEach(orderInfo -> {
@@ -161,16 +162,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
     public void execExpireOrder(Long orderId) {
         // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
         // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
-        this.updateOrderStatus(orderId,ProcessStatus.CLOSED);
+        this.updateOrderStatus(orderId, ProcessStatus.CLOSED);
     }
 
     @Override
     public OrderInfo getOrderInfo(Long orderId) {
         OrderInfo orderInfo = this.orderInfoMapper.selectById(orderId);
 
-        if (orderInfo!=null){
+        if (orderInfo != null) {
             LambdaQueryWrapper<OrderDetail> orderDetailLambdaQueryWrapper = new LambdaQueryWrapper<>();
-            orderDetailLambdaQueryWrapper.eq(OrderDetail::getOrderId,orderId);
+            orderDetailLambdaQueryWrapper.eq(OrderDetail::getOrderId, orderId);
             List<OrderDetail> orderDetailList = this.orderDetailMapMapper.selectList(orderDetailLambdaQueryWrapper);
             orderInfo.setOrderDetailList(orderDetailList);
         }
@@ -179,11 +180,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
 
     /**
      * 更新订单方法          // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
+     *
      * @param orderId
      * @param processStatus
      */
     @Override
-    public void updateOrderStatus(Long orderId, ProcessStatus processStatus){
+    public void updateOrderStatus(Long orderId, ProcessStatus processStatus) {
         // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
         OrderInfo orderInfo = new OrderInfo();
         orderInfo.setId(orderId);
@@ -195,14 +197,15 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
     @Override
     public void sendOrderStatus(Long orderId) {
         // 发送消息给库存系统 减库存
-        this.updateOrderStatus(orderId,ProcessStatus.NOTIFIED_WARE);
+        this.updateOrderStatus(orderId, ProcessStatus.NOTIFIED_WARE);
         //发送消息参数 为库存系统所需JSON格式封装数据
         String wareJson = initWareOrder(orderId);
-        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_WARE_STOCK,MqConst.ROUTING_WARE_STOCK,wareJson);
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_WARE_STOCK, MqConst.ROUTING_WARE_STOCK, wareJson);
     }
 
     /**
      * 封装库存消息所需参数
+     *
      * @param orderId
      * @return
      */
@@ -216,18 +219,23 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
 
     /**
      * 转换orderInfo -> map
+     *
      * @param orderInfo
      * @return
      */
-    private Map initWareOrder(OrderInfo orderInfo) {
+    @Override
+    public Map initWareOrder(OrderInfo orderInfo) {
         HashMap<String, Object> hashMap = new HashMap<>();
-        hashMap.put("orderId",orderInfo.getId());
-        hashMap.put("consignee",orderInfo.getConsignee());
-        hashMap.put("consigneeTel",orderInfo.getConsigneeTel());
-        hashMap.put("orderComment",orderInfo.getOrderComment());
-        hashMap.put("orderBody",orderInfo.getTradeBody());
-        hashMap.put("deliverAddress",orderInfo.getDeliveryAddress());
-        hashMap.put("paymentWay",2);
+        hashMap.put("orderId", orderInfo.getId());
+        hashMap.put("consignee", orderInfo.getConsignee());
+        hashMap.put("consigneeTel", orderInfo.getConsigneeTel());
+        hashMap.put("orderComment", orderInfo.getOrderComment());
+        hashMap.put("orderBody", orderInfo.getTradeBody());
+        hashMap.put("deliverAddress", orderInfo.getDeliveryAddress());
+        hashMap.put("paymentWay", 2);
+
+        hashMap.put("wareId", orderInfo.getWareId());
+
         // 上面封装orderInfo的 下面 details明细
         List<OrderDetail> orderDetailList = orderInfo.getOrderDetailList();
 //        ArrayList<Map> maps = new ArrayList<>();
@@ -247,7 +255,67 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
             return detailMap;
         }).collect(Collectors.toList());
 
-        hashMap.put("details",detailListMap);
+        hashMap.put("details", detailListMap);
         return hashMap;
+    }
+
+    @Override
+    public List<OrderInfo> orderSplit(String orderId, String wareSkuMap) {
+        /*
+                拆单业务:
+                    1. 现获取原始订单
+                    2. 将wareSkuMap的JSON格式数据 变为 能操作的对象
+                    3. 创建新的子订单,并赋值
+                    4. 子订单添加到子订单集合
+                    5. 保存新的子订单
+                    6. 更新原始订单状态
+         */
+
+        // 4 创建子订单集合对象
+        ArrayList<OrderInfo> subOrderDetailList = new ArrayList<>();
+
+        OrderInfo orderInfoOrigin = this.getOrderInfo(Long.parseLong(orderId));
+        // 2
+        List<Map> mapList = JSON.parseArray(wareSkuMap, Map.class);
+        for (Map map : mapList) {
+            String warwId = (String) map.get("warwId");
+            // 仓库下可能会有很多商品数据
+            List<String> skuIdList = (List<String>) map.get("skuIds");
+            // 3
+            OrderInfo subOrderInfo = new OrderInfo();
+            BeanUtils.copyProperties(orderInfoOrigin, subOrderInfo);
+            // 主键自增
+            subOrderInfo.setId(null);
+            // 自订单服id
+            subOrderInfo.setParentOrderId(Long.parseLong(orderId));
+            // 赋值一个仓库id
+            subOrderInfo.setWareId(warwId);
+
+            // 声明子订单明细
+            ArrayList<OrderDetail> subOrderDetails = new ArrayList<>();
+            // 重新计算子订单金额  单价*数量 方法需要子订单明细数据支撑
+            List<OrderDetail> orderDetailList = orderInfoOrigin.getOrderDetailList();
+            for (OrderDetail orderDetail : orderDetailList) {
+                // 循环JSON 字符串中获取到对应的skuId
+                for (String skuId : skuIdList) {
+                    if (orderDetail.getSkuId().longValue() == Long.parseLong(skuId)) {
+                        // 找到了订单明细
+                        subOrderDetails.add(orderDetail);
+                    }
+                }
+            }
+            subOrderInfo.setOrderDetailList(subOrderDetails);
+            subOrderInfo.sumTotalAmount();
+
+            subOrderDetailList.add(subOrderInfo);
+
+            // 5 子订单保存到数据库
+            this.saveOrderInfo(subOrderInfo);
+        }
+
+        // 6 将原始订单状态 变为 SPLIT
+        this.updateOrderStatus(Long.parseLong(orderId),ProcessStatus.SPLIT);
+
+        return subOrderDetailList;
     }
 }

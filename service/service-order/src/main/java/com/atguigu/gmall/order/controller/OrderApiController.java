@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.atguigu.gmall.cart.client.ServiceCartFeignClient;
 import com.atguigu.gmall.common.constant.RedisConst;
 import com.atguigu.gmall.common.result.Result;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -226,6 +228,31 @@ public class OrderApiController {
         return this.orderService.getOrderInfo(orderId);
     }
 
+    // http://localhost:8204/api/order/orderSplit?orderId=wareOrderTask.getOrderId()&wareSkuMap=jsonString
+    @PostMapping("orderSplit")
+    public String orderSplit(HttpServletRequest request){
 
+        String orderId = request.getParameter("orderId");
+        String wareSkuMap = request.getParameter("wareSkuMap");
+        // 返回子订单集合
+        List<OrderInfo> subOrderInfoList = this.orderService.orderSplit(orderId,wareSkuMap);
+
+        // 返回数据 orderInfo中的部分字段
+        // orderInfo --> Map
+        //方法一: forEach
+//        ArrayList<Map> maps = new ArrayList<>();
+//        subOrderInfoList.forEach(orderInfo -> {
+//            // orderInfo ---> Map
+//            Map map = this.orderService.initWareOrder(orderInfo);
+//            maps.add(map);
+//        });
+        // 方法二: lambda
+        List<Map> maps = subOrderInfoList.stream().map(orderInfo -> {
+            Map map = this.orderService.initWareOrder(orderInfo);
+            return map;
+        }).collect(Collectors.toList());
+
+        return JSON.toJSONString(maps);
+    }
 
 }

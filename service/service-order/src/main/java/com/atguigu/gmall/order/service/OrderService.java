@@ -7,6 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author 恺牧泽
  */
@@ -80,4 +83,19 @@ public interface OrderService extends IService<OrderInfo> {
      * @param orderId
      */
     void sendOrderStatus(Long orderId);
+
+    /**
+     * OrderInfo -> map
+     * @param orderInfo
+     * @return
+     */
+    Map initWareOrder(OrderInfo orderInfo);
+
+    /**
+     * 拆单业务
+     * @param orderId
+     * @param wareSkuMap
+     * @return
+     */
+    List<OrderInfo> orderSplit(String orderId, String wareSkuMap);
 }
