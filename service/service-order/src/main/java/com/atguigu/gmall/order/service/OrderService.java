@@ -1,5 +1,6 @@
 package com.atguigu.gmall.order.service;
 
+import com.atguigu.gmall.model.enums.ProcessStatus;
 import com.atguigu.gmall.model.order.OrderInfo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -66,4 +67,11 @@ public interface OrderService extends IService<OrderInfo> {
      * @return
      */
     OrderInfo getOrderInfo(Long orderId);
+
+    /**
+     * 更新订单方法          // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
+     * @param orderId
+     * @param processStatus
+     */
+    void updateOrderStatus(Long orderId, ProcessStatus processStatus);
 }

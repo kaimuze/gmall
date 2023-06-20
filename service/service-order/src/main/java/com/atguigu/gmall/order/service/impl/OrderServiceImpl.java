@@ -179,6 +179,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> imp
      * @param orderId
      * @param processStatus
      */
+    @Override
     public void updateOrderStatus(Long orderId, ProcessStatus processStatus){
         // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
         OrderInfo orderInfo = new OrderInfo();

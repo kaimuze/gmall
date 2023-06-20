@@ -1,5 +1,7 @@
 package com.atguigu.gmall.payment.service.impl;
 
+import com.atguigu.gmall.common.constant.MqConst;
+import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.model.enums.PaymentStatus;
 import com.atguigu.gmall.model.enums.PaymentType;
 import com.atguigu.gmall.model.order.OrderInfo;
@@ -9,6 +11,7 @@ import com.atguigu.gmall.payment.service.PaymentService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import org.aspectj.runtime.internal.cflowstack.ThreadStackImpl11;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Autowired
     private RedisTemplate redisTemplate;
+
+    @Autowired
+    private RabbitService rabbitService;
 
     @Override
     public void savePaymentInfo(OrderInfo orderInfo, String paymentType) {
@@ -103,6 +109,9 @@ public class PaymentServiceImpl implements PaymentService {
             this.redisTemplate.delete(paramMap.get("notify_id"));
             e.printStackTrace();
         }
+
+        // 支付成功发送消息给订单,通知订单更新状态  发送订单id
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_PAYMENT_PAY,MqConst.ROUTING_PAYMENT_PAY,paymentInfoQuery.getOrderId());
 
     }
 
