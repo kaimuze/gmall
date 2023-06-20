@@ -8,6 +8,7 @@ import com.atguigu.gmall.model.payment.PaymentInfo;
 import com.atguigu.gmall.payment.config.AlipayConfig;
 import com.atguigu.gmall.payment.service.AlipayService;
 import com.atguigu.gmall.payment.service.PaymentService;
+import com.sun.org.apache.xalan.internal.xsltc.compiler.util.ResultTreeType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -149,6 +150,22 @@ public class AlipayController {
 
         Boolean result = this.alipayService.refund(orderId);
         return result;
+    }
+
+    // 关闭支付宝交易订单接口
+    @GetMapping("closePay/{orderId}")
+    @ResponseBody
+    public Boolean closeAliPay(@PathVariable Long orderId){
+        Boolean result = this.alipayService.closeAliPay(orderId);
+        return result;
+    }
+
+
+    // 查询支付宝交易记录
+    @GetMapping("checkPayment/{orderId}")
+    @ResponseBody
+    public Boolean checkPayment(@PathVariable Long orderId){
+        return this.alipayService.checkPayment(orderId);
     }
 
 }
