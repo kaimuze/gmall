@@ -1,5 +1,8 @@
 package com.atguigu.gmall.order.service.impl;
 
+import com.atguigu.gmall.common.constant.MqConst;
+import com.atguigu.gmall.common.constant.RedisConst;
+import com.atguigu.gmall.common.service.RabbitService;
 import com.atguigu.gmall.common.util.HttpClientUtil;
 import com.atguigu.gmall.model.enums.OrderStatus;
 import com.atguigu.gmall.model.enums.ProcessStatus;
@@ -8,8 +11,10 @@ import com.atguigu.gmall.model.order.OrderInfo;
 import com.atguigu.gmall.order.service.OrderService;
 import com.atguigu.gmall.order.mapper.OrderInfoMapper;
 import com.atguigu.gmall.order.mapper.OrderDetailMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,7 +30,7 @@ import java.util.*;
  * @Description:
  */
 @Service
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper,OrderInfo> implements OrderService {
 
     @Autowired
     private OrderInfoMapper orderInfoMapper;
@@ -38,6 +43,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Value("${ware.url}")
     private String wareUrl;
+
+    @Autowired
+    private RabbitService rabbitService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -82,6 +90,9 @@ public class OrderServiceImpl implements OrderService {
             orderDetail.setOrderId(orderInfo.getId());
             orderDetailMapMapper.insert(orderDetail);
         });
+
+        // 下单保存订单消息时,发送延迟消息.到期不付款处理
+        this.rabbitService.sendDelayMsg(MqConst.EXCHANGE_DIRECT_ORDER_CANCEL,MqConst.ROUTING_ORDER_CANCEL,orderInfo.getId(),MqConst.DELAY_TIME);
 
         return orderInfo.getId();
     }
@@ -141,5 +152,26 @@ public class OrderServiceImpl implements OrderService {
         });
 
         return orderInfoIPage;
+    }
+
+    @Override
+    public void execExpireOrder(Long orderId) {
+        // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
+        // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
+        this.updateOrderStatus(orderId,ProcessStatus.CLOSED);
+    }
+
+    /**
+     * 更新订单方法          // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
+     * @param orderId
+     * @param processStatus
+     */
+    public void updateOrderStatus(Long orderId, ProcessStatus processStatus){
+        // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
+        OrderInfo orderInfo = new OrderInfo();
+        orderInfo.setId(orderId);
+        orderInfo.setOrderStatus(processStatus.getOrderStatus().name());
+        orderInfo.setProcessStatus(processStatus.name());
+        this.orderInfoMapper.updateById(orderInfo);
     }
 }

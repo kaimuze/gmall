@@ -3,12 +3,13 @@ package com.atguigu.gmall.order.service;
 import com.atguigu.gmall.model.order.OrderInfo;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 
 /**
  * @author 恺牧泽
  */
-public interface OrderService {
+public interface OrderService extends IService<OrderInfo> {
 
     /**
      * 保存订单信息
@@ -52,4 +53,10 @@ public interface OrderService {
      * @return
      */
     IPage<OrderInfo> getOrderInfoPage(Page<OrderInfo> pageModel, String userId);
+
+    /**
+     * 取消订单操作
+     * @param orderId
+     */
+    void execExpireOrder(Long orderId);
 }
