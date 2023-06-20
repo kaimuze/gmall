@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 // 修改nacos配置文件重新发布 无需重启注解
 @RefreshScope
 @Controller
-@RequestMapping("/api/payment/alipay")
+@RequestMapping("/api/payment/alipay/")
 public class AlipayController {
 
     @Autowired
@@ -166,6 +166,18 @@ public class AlipayController {
     @ResponseBody
     public Boolean checkPayment(@PathVariable Long orderId){
         return this.alipayService.checkPayment(orderId);
+    }
+
+    //查询交易接口
+    @GetMapping("getPaymentInfo/{outTradeNo}")
+    @ResponseBody
+    public PaymentInfo getPaymentInfo(@PathVariable String outTradeNo){
+        PaymentInfo paymentInfo = this.paymentService.getPaymentInfo(outTradeNo,PaymentType.ALIPAY.name());
+        if (paymentInfo!=null){
+            return paymentInfo;
+        }else {
+            return null;
+        }
     }
 
 }

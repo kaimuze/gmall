@@ -65,6 +65,12 @@ public interface OrderService extends IService<OrderInfo> {
     void execExpireOrder(Long orderId);
 
     /**
+     * 取消订单操作 后续加入了支付和支付宝模块. 存在只需要关闭本地订单业务,而支付和支付宝无需关闭情况,这里创建方法进行区分
+     * @param orderId
+     */
+    void execExpireOrder(Long orderId,String flag);
+
+    /**
      * 根据订单id获取订单集合数据
      * @param orderId
      * @return
