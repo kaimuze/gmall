@@ -124,5 +124,15 @@ public class PaymentServiceImpl implements PaymentService {
         paymentInfoMapper.update(paymentInfo,paymentInfoUpdateWrapper);
     }
 
+    @Override
+    public void closePayment(Long orderId) {
+        LambdaQueryWrapper<PaymentInfo> paymentInfoLambdaQueryWrapper = new LambdaQueryWrapper<>();
+        paymentInfoLambdaQueryWrapper.eq(PaymentInfo::getOrderId,orderId);
+        PaymentInfo paymentInfo = new PaymentInfo();
+        paymentInfo.setPaymentStatus(PaymentStatus.CLOSED.name());
+        paymentInfo.setUpdateTime(new Date());
+        this.paymentInfoMapper.update(paymentInfo,paymentInfoLambdaQueryWrapper);
+    }
+
 
 }

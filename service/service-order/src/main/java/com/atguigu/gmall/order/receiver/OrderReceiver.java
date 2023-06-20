@@ -34,6 +34,12 @@ public class OrderReceiver {
     @Autowired
     private OrderService orderService;
 
+    /**
+     * 监听取消订单消息 死信队列插件版
+     * @param orderId
+     * @param message
+     * @param channel
+     */
     @SneakyThrows
     @RabbitListener(queues = MqConst.QUEUE_ORDER_CANCEL)
     public void orderCancel(Long orderId, Message message, Channel channel) {

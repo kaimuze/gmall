@@ -163,6 +163,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderInfoMapper, OrderInfo> im
         // 取消订单本质: 更新订单状态和订单进度为 CLOSED   order_status  process_status
         // 后续会有很多根据订单id更新订单状态和进程状态的需求. 因此做一个方法抽离.
         this.updateOrderStatus(orderId, ProcessStatus.CLOSED);
+
+        // 还需将本地交易记录的状态变更为CLOSED  以及 支付宝的交易状态也变更
+        this.rabbitService.sendMes(MqConst.EXCHANGE_DIRECT_PAYMENT_CLOSE,MqConst.ROUTING_PAYMENT_CLOSE,orderId);
+
     }
 
     @Override
